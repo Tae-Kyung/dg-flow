@@ -6,6 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ORDER_STATUS, type OrderStatus } from '@/types/order-status';
 import OrderActions from '@/components/order/OrderActions';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { FileText, FileSpreadsheet } from 'lucide-react';
 
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -105,7 +108,17 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       </Card>
 
       {/* 액션 버튼 */}
-      {user && <OrderActions orderId={order.id} currentStatus={status} userRole={user.role} />}
+      <div className="flex gap-3 flex-wrap">
+        <Link href={`/orders/${id}/preview`}>
+          <Button variant="outline"><FileText className="mr-2 h-4 w-4" />주문의뢰서 보기</Button>
+        </Link>
+        {(status === 'final_approved' || status === 'erp_completed') && (
+          <Link href={`/orders/${id}/erp-preview`}>
+            <Button variant="outline"><FileSpreadsheet className="mr-2 h-4 w-4" />ERP 데이터</Button>
+          </Link>
+        )}
+        {user && <OrderActions orderId={order.id} currentStatus={status} userRole={user.role} />}
+      </div>
 
       {/* 상태 변경 이력 */}
       <Card>

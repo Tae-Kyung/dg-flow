@@ -23,17 +23,17 @@
 
 | # | 태스크 | 상태 | 완료일 | 산출물 | 비고 |
 |---|--------|------|--------|--------|------|
-| 0-1 | Next.js 프로젝트 생성 (App Router) | [ ] | | | npx create-next-app |
-| 0-2 | TypeScript, ESLint, Tailwind CSS 설정 | [ ] | | tsconfig.json, tailwind.config.ts | |
-| 0-3 | Supabase 프로젝트 생성 및 연결 | [ ] | | .env.local (SUPABASE_URL, SUPABASE_ANON_KEY) | |
-| 0-4 | Supabase 클라이언트 유틸 설정 | [ ] | | lib/supabase/client.ts, server.ts | |
-| 0-5 | 프로젝트 디렉토리 구조 확정 | [ ] | | 디렉토리 구조 문서화 | |
-| 0-6 | UI 컴포넌트 라이브러리 선정 및 설치 | [ ] | | package.json | shadcn/ui 권장 |
-| 0-7 | Vercel 배포 연결 및 첫 배포 확인 | [ ] | | vercel.json | 프리뷰 URL 확인 |
-| 0-8 | Git 저장소 초기화 및 .gitignore 설정 | [ ] | | .gitignore | |
-| 0-9 | Vitest 설치 및 테스트 환경 구성 | [ ] | | vitest.config.ts, __tests__/ | 비즈니스 로직 단위 테스트용 |
-| 0-10 | Claude Code 하네스 hooks 동작 확인 | [ ] | | .claude/settings.json | tsc/eslint 자동 실행 확인 |
-| 0-11 | 커밋 컨벤션 및 브랜치 전략 확정 | [ ] | | | feat/fix/test + TASK 번호 |
+| 0-1 | Next.js 프로젝트 생성 (App Router) | [x] | 2026-08-30 | app/layout.tsx, app/page.tsx | Next.js 15.1, App Router |
+| 0-2 | TypeScript, ESLint, Tailwind CSS 설정 | [x] | 2026-08-30 | tsconfig.json, tailwind.config.ts, postcss.config.mjs | Tailwind v3, strict TS |
+| 0-3 | Supabase 프로젝트 생성 및 연결 | [x] | 2026-08-30 | .env.local | 기존 프로젝트 활용 (xlfrwcrfjuvajskvjwnq) |
+| 0-4 | Supabase 클라이언트 유틸 설정 | [x] | 2026-08-30 | lib/supabase/client.ts, server.ts | SSR + service_role 클라이언트 |
+| 0-5 | 프로젝트 디렉토리 구조 확정 | [x] | 2026-08-30 | CLAUDE.md, TASK.md 파일구조 섹션 | 기존 Python → legacy/ 이동 |
+| 0-6 | UI 컴포넌트 라이브러리 선정 및 설치 | [~] | | package.json | shadcn/ui 초기화 필요 (STEP 1에서 진행) |
+| 0-7 | Vercel 배포 연결 및 첫 배포 확인 | [-] | | | 로컬 빌드 성공 확인. Vercel 연결은 별도 진행 |
+| 0-8 | Git 저장소 초기화 및 .gitignore 설정 | [x] | 2026-08-30 | .gitignore, 초기 커밋 완료 | main 브랜치 |
+| 0-9 | Vitest 설치 및 테스트 환경 구성 | [x] | 2026-08-30 | vitest.config.ts, __tests__/ | jsdom 환경 |
+| 0-10 | Claude Code 하네스 hooks 동작 확인 | [x] | 2026-08-30 | .claude/settings.json | tsc 자동 실행 확인 |
+| 0-11 | 커밋 컨벤션 및 브랜치 전략 확정 | [x] | 2026-08-30 | CLAUDE.md | feat/fix/test + TASK 번호, main 직접 작업 |
 
 **STEP 0 완료 기준:** 빈 Next.js 앱이 Vercel에 배포되고, Supabase 연결이 확인되고, tsc/eslint/vitest가 동작하는 상태
 

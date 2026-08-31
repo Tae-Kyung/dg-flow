@@ -3,10 +3,10 @@
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, FileSpreadsheet, AlertCircle } from 'lucide-react';
-import { parseOrderExcel, type ParsedOrderItem } from '@/lib/parser/excel-order';
+import { parseOrderExcel, type ParsedOrderItem, type ParsedOrderMeta } from '@/lib/parser/excel-order';
 
 interface ExcelUploadProps {
-  onParsed: (items: ParsedOrderItem[]) => void;
+  onParsed: (items: ParsedOrderItem[], meta: ParsedOrderMeta) => void;
 }
 
 export default function ExcelUpload({ onParsed }: ExcelUploadProps) {
@@ -33,7 +33,7 @@ export default function ExcelUpload({ onParsed }: ExcelUploadProps) {
         return;
       }
 
-      onParsed(result.items);
+      onParsed(result.items, result.meta);
 
       const warningMsg = result.warnings.length > 0 ? ` (${result.warnings.join(', ')})` : '';
       setStatus({

@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plus, Trash2, Save } from 'lucide-react';
 import { calculateArea } from '@/lib/calc/area';
 import ExcelUpload from '@/components/order/ExcelUpload';
-import type { ParsedOrderItem } from '@/lib/parser/excel-order';
+import type { ParsedOrderItem, ParsedOrderMeta } from '@/lib/parser/excel-order';
 
 interface OrderItem {
   product_name: string;
@@ -54,6 +54,7 @@ export default function NewOrderPage() {
   const [items, setItems] = useState<OrderItem[]>([{ ...emptyItem }]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [pendingSiteName, setPendingSiteName] = useState('');
 
   useEffect(() => {
     supabase.from('dgflow_customers').select('id, name, short_name').eq('is_active', true).order('name')
@@ -66,7 +67,20 @@ export default function NewOrderPage() {
     if (customerId) {
       supabase.from('dgflow_sites').select('id, site_name, customer_id')
         .eq('customer_id', customerId).eq('is_active', true).order('site_name')
-        .then(({ data }) => { setSites(data || []); setSiteId(''); });
+        .then(({ data }) => {
+          const siteList = data || [];
+          setSites(siteList);
+          // 엑셀에서 파싱된 현장명이 있으면 자동 매칭
+          if (pendingSiteName) {
+            const matched = siteList.find(s =>
+              s.site_name.includes(pendingSiteName) || pendingSiteName.includes(s.site_name)
+            );
+            if (matched) setSiteId(matched.id);
+            setPendingSiteName('');
+          } else {
+            setSiteId('');
+          }
+        });
     }
   }, [customerId]);
 
@@ -95,7 +109,21 @@ export default function NewOrderPage() {
   const totalArea = items.reduce((s, i) =>
     s + calculateArea(parseInt(i.width_mm) || 0, parseInt(i.height_mm) || 0, parseInt(i.quantity) || 0), 0);
 
-  function handleExcelParsed(parsedItems: ParsedOrderItem[]) {
+  function handleExcelParsed(parsedItems: ParsedOrderItem[], meta: ParsedOrderMeta) {
+    // 기본정보 자동 채움
+    if (meta.customer_name) {
+      const matched = customers.find(c =>
+        c.name.includes(meta.customer_name) || c.short_name?.includes(meta.customer_name) ||
+        meta.customer_name.includes(c.name) || meta.customer_name.includes(c.short_name || '')
+      );
+      if (matched) setCustomerId(matched.id);
+    }
+    if (meta.site_name) setPendingSiteName(meta.site_name);
+    if (meta.order_date) setOrderDate(meta.order_date);
+    if (meta.delivery_date) setDeliveryDate(meta.delivery_date);
+    if (meta.remark) setRemark(meta.remark);
+
+    // 품목 자동 채움
     const newItems: OrderItem[] = parsedItems.map(p => ({
       product_name: p.product_name,
       product_id: products.find(pr => pr.display_name === p.product_name)?.id || '',

@@ -61,7 +61,7 @@ export default async function ProductionPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Link href={`/production/${wo.id}`} className="text-blue-600 hover:underline text-sm">입력</Link>
+                      <Link href={`/work-orders/${wo.id}`} className="text-blue-600 hover:underline text-sm font-medium">상세</Link>
                     </TableCell>
                   </TableRow>
                 );

@@ -1,25 +1,50 @@
 'use client';
 
 import { useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { loginAction } from './actions';
 
 export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(formData: FormData) {
+  async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
     setError('');
     setLoading(true);
-    const result = await loginAction(formData);
-    if (result?.error) {
-      setError(result.error);
+
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+
+    // 1. 클라이언트에서 Supabase 로그인
+    const supabase = createClient();
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (authError || !data.session) {
+      setError('이메일 또는 비밀번호가 올바르지 않습니다.');
       setLoading(false);
+      return;
     }
-    // 성공 시 loginAction 내에서 redirect 처리
+
+    // 2. 서버에 세션 전달하여 SSR 쿠키 설정
+    await fetch('/api/auth/callback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      }),
+    });
+
+    // 3. 쿠키 설정 후 전체 페이지 이동
+    window.location.href = '/dashboard';
   }
 
   return (
@@ -30,7 +55,7 @@ export default function LoginPage() {
           <CardDescription>동일유리 주문관리 시스템</CardDescription>
         </CardHeader>
         <CardContent>
-          <form action={handleSubmit} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">이메일</Label>
               <Input

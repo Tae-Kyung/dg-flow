@@ -1,22 +1,29 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
+import Pagination from '@/components/ui/pagination';
 
-export default async function ProductionPage() {
+const PAGE_SIZE = 20;
+
+export default async function ProductionPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  const params = await searchParams;
+  const page = parseInt(params.page || '1');
+  const offset = (page - 1) * PAGE_SIZE;
+
   const supabase = await createServerSupabaseClient();
 
-  // 진행중인 작업의뢰서 + 생산 진행률
-  const { data: workOrders } = await supabase
+  const { data: workOrders, count } = await supabase
     .from('dgflow_work_orders')
     .select(`
       *,
       order:dgflow_orders(customer:dgflow_customers(short_name), site:dgflow_sites(site_name)),
       items:dgflow_work_order_items(quantity, produced_quantity)
-    `)
+    `, { count: 'exact' })
     .in('status', ['pending', 'in_progress'])
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .range(offset, offset + PAGE_SIZE - 1);
 
   return (
     <div className="space-y-6">
@@ -70,6 +77,7 @@ export default async function ProductionPage() {
           </Table>
         </CardContent>
       </Card>
+      <Pagination totalCount={count || 0} pageSize={PAGE_SIZE} />
     </div>
   );
 }

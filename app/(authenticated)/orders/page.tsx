@@ -3,11 +3,12 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { getCurrentUser } from '@/lib/auth/get-user';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ORDER_STATUS, type OrderStatus } from '@/types/order-status';
 import { Plus } from 'lucide-react';
 import { hasPermission } from '@/lib/auth/role-guard';
+import Pagination from '@/components/ui/pagination';
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-800',
@@ -26,21 +27,28 @@ const STATUS_COLORS: Record<string, string> = {
   production_completed: 'bg-green-200 text-green-900',
 };
 
-export default async function OrdersPage() {
+const PAGE_SIZE = 20;
+
+export default async function OrdersPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  const params = await searchParams;
+  const page = parseInt(params.page || '1');
+  const offset = (page - 1) * PAGE_SIZE;
+
   const user = await getCurrentUser();
   const supabase = await createServerSupabaseClient();
 
-  const { data: orders } = await supabase
+  const { data: orders, count } = await supabase
     .from('dgflow_orders')
     .select(`
       *,
       customer:dgflow_customers(name, short_name),
       site:dgflow_sites(site_name),
       creator:dgflow_users!created_by(name)
-    `)
+    `, { count: 'exact' })
     .order('created_at', { ascending: false })
-    .limit(50);
+    .range(offset, offset + PAGE_SIZE - 1);
 
+  const totalCount = count || 0;
   const canCreate = user && hasPermission(user.role, 'orders:create');
 
   return (
@@ -111,6 +119,7 @@ export default async function OrdersPage() {
           </Table>
         </CardContent>
       </Card>
+      <Pagination totalCount={totalCount} pageSize={PAGE_SIZE} />
     </div>
   );
 }

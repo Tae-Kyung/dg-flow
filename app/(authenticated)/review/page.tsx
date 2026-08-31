@@ -4,15 +4,23 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ORDER_STATUS, type OrderStatus } from '@/types/order-status';
 import Link from 'next/link';
+import Pagination from '@/components/ui/pagination';
 
-export default async function ReviewPage() {
+const PAGE_SIZE = 20;
+
+export default async function ReviewPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  const params = await searchParams;
+  const page = parseInt(params.page || '1');
+  const offset = (page - 1) * PAGE_SIZE;
+
   const supabase = await createServerSupabaseClient();
 
-  const { data: orders } = await supabase
+  const { data: orders, count } = await supabase
     .from('dgflow_orders')
-    .select(`*, customer:dgflow_customers(short_name), site:dgflow_sites(site_name), creator:dgflow_users!created_by(name)`)
+    .select(`*, customer:dgflow_customers(short_name), site:dgflow_sites(site_name), creator:dgflow_users!created_by(name)`, { count: 'exact' })
     .in('status', ['customer_approved', 'under_review', 'review_completed'])
-    .order('updated_at', { ascending: false });
+    .order('updated_at', { ascending: false })
+    .range(offset, offset + PAGE_SIZE - 1);
 
   return (
     <div className="space-y-6">
@@ -49,6 +57,7 @@ export default async function ReviewPage() {
           </Table>
         </CardContent>
       </Card>
+      <Pagination totalCount={count || 0} pageSize={PAGE_SIZE} />
     </div>
   );
 }

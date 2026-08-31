@@ -3,17 +3,23 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import Link from 'next/link';
+import Pagination from '@/components/ui/pagination';
 
 const WO_STATUS: Record<string, string> = { pending: '대기', in_progress: '진행중', completed: '완료' };
+const PAGE_SIZE = 20;
 
-export default async function WorkOrdersPage() {
+export default async function WorkOrdersPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+  const params = await searchParams;
+  const page = parseInt(params.page || '1');
+  const offset = (page - 1) * PAGE_SIZE;
+
   const supabase = await createServerSupabaseClient();
 
-  const { data: workOrders } = await supabase
+  const { data: workOrders, count } = await supabase
     .from('dgflow_work_orders')
-    .select(`*, order:dgflow_orders(order_number, customer:dgflow_customers(short_name), site:dgflow_sites(site_name))`)
+    .select(`*, order:dgflow_orders(order_number, customer:dgflow_customers(short_name), site:dgflow_sites(site_name))`, { count: 'exact' })
     .order('created_at', { ascending: false })
-    .limit(50);
+    .range(offset, offset + PAGE_SIZE - 1);
 
   return (
     <div className="space-y-6">
@@ -55,6 +61,7 @@ export default async function WorkOrdersPage() {
           </Table>
         </CardContent>
       </Card>
+      <Pagination totalCount={count || 0} pageSize={PAGE_SIZE} />
     </div>
   );
 }

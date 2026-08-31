@@ -5,27 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ORDER_STATUS, type OrderStatus } from '@/types/order-status';
+import { ORDER_STATUS, STATUS_COLORS, type OrderStatus } from '@/types/order-status';
 import { Plus } from 'lucide-react';
 import { hasPermission } from '@/lib/auth/role-guard';
 import Pagination from '@/components/ui/pagination';
-
-const STATUS_COLORS: Record<string, string> = {
-  draft: 'bg-gray-100 text-gray-800',
-  completed: 'bg-blue-50 text-blue-800',
-  pending_customer: 'bg-yellow-100 text-yellow-800',
-  rejected_by_customer: 'bg-red-100 text-red-800',
-  customer_approved: 'bg-blue-100 text-blue-800',
-  under_review: 'bg-purple-100 text-purple-800',
-  review_completed: 'bg-indigo-100 text-indigo-800',
-  pending_approval: 'bg-orange-100 text-orange-800',
-  rejected_by_admin: 'bg-red-100 text-red-800',
-  final_approved: 'bg-green-100 text-green-800',
-  erp_completed: 'bg-emerald-100 text-emerald-800',
-  work_order_created: 'bg-teal-100 text-teal-800',
-  in_production: 'bg-cyan-100 text-cyan-800',
-  production_completed: 'bg-green-200 text-green-900',
-};
 
 const PAGE_SIZE = 20;
 
@@ -107,7 +90,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                     <TableCell className="text-right">{order.total_quantity}</TableCell>
                     <TableCell className="text-right">{order.total_area_m2}</TableCell>
                     <TableCell>
-                      <Badge className={STATUS_COLORS[order.status] || ''} variant="secondary">
+                      <Badge className={STATUS_COLORS[order.status as OrderStatus] || ''} variant="secondary">
                         {ORDER_STATUS[order.status as OrderStatus]}
                       </Badge>
                     </TableCell>

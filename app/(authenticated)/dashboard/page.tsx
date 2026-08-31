@@ -12,55 +12,45 @@ export default async function DashboardPage() {
   const user = await getCurrentUser();
   const supabase = await createServerSupabaseClient();
 
-  // 전체 주문 수
-  const { count: totalOrders } = await supabase
-    .from('dgflow_orders').select('*', { count: 'exact', head: true });
+  // 모든 쿼리를 병렬 실행 (순차 → 병렬로 로딩 속도 개선)
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  const weekLater = new Date();
+  weekLater.setDate(weekLater.getDate() + 7);
+  const thirtyDaysAgo = format(subDays(new Date(), 30), 'yyyy-MM-dd');
 
-  // 상태별 건수
-  const { data: statusCounts } = await supabase
-    .from('dgflow_orders')
-    .select('status');
+  const [
+    { count: totalOrders },
+    { data: statusCounts },
+    { data: monthOrders },
+    { data: urgentOrders },
+    { data: recentOrders },
+    { data: trendOrders },
+  ] = await Promise.all([
+    supabase.from('dgflow_orders').select('*', { count: 'exact', head: true }),
+    supabase.from('dgflow_orders').select('status'),
+    supabase.from('dgflow_orders').select('total_quantity, total_area_m2')
+      .gte('order_date', monthStart.toISOString().split('T')[0]),
+    supabase.from('dgflow_orders')
+      .select(`*, customer:dgflow_customers(short_name), site:dgflow_sites(site_name)`)
+      .lte('delivery_date', weekLater.toISOString().split('T')[0])
+      .not('status', 'in', '("production_completed","erp_completed")')
+      .order('delivery_date').limit(10),
+    supabase.from('dgflow_orders')
+      .select(`*, customer:dgflow_customers(short_name), site:dgflow_sites(site_name), creator:dgflow_users!created_by(name)`)
+      .order('created_at', { ascending: false }).limit(5),
+    supabase.from('dgflow_orders')
+      .select('order_date, total_quantity, total_area_m2')
+      .gte('order_date', thirtyDaysAgo),
+  ]);
 
   const statusMap = new Map<string, number>();
   (statusCounts || []).forEach(o => {
     statusMap.set(o.status, (statusMap.get(o.status) || 0) + 1);
   });
 
-  // 이번 달 주문
-  const monthStart = new Date();
-  monthStart.setDate(1);
-  const { data: monthOrders } = await supabase
-    .from('dgflow_orders')
-    .select('total_quantity, total_area_m2')
-    .gte('order_date', monthStart.toISOString().split('T')[0]);
-
   const monthQuantity = (monthOrders || []).reduce((s, o) => s + o.total_quantity, 0);
   const monthArea = (monthOrders || []).reduce((s, o) => s + Number(o.total_area_m2), 0);
-
-  // 납기 임박 (7일 이내)
-  const weekLater = new Date();
-  weekLater.setDate(weekLater.getDate() + 7);
-  const { data: urgentOrders } = await supabase
-    .from('dgflow_orders')
-    .select(`*, customer:dgflow_customers(short_name), site:dgflow_sites(site_name)`)
-    .lte('delivery_date', weekLater.toISOString().split('T')[0])
-    .not('status', 'in', '("production_completed","erp_completed")')
-    .order('delivery_date')
-    .limit(10);
-
-  // 최근 주문
-  const { data: recentOrders } = await supabase
-    .from('dgflow_orders')
-    .select(`*, customer:dgflow_customers(short_name), site:dgflow_sites(site_name), creator:dgflow_users!created_by(name)`)
-    .order('created_at', { ascending: false })
-    .limit(5);
-
-  // 최근 30일 추이 데이터
-  const thirtyDaysAgo = format(subDays(new Date(), 30), 'yyyy-MM-dd');
-  const { data: trendOrders } = await supabase
-    .from('dgflow_orders')
-    .select('order_date, total_quantity, total_area_m2')
-    .gte('order_date', thirtyDaysAgo);
 
   const trendMap = new Map<string, { count: number; quantity: number; area: number }>();
   (trendOrders || []).forEach(o => {

@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ORDER_STATUS, type OrderStatus } from '@/types/order-status';
+import { ORDER_STATUS, STATUS_COLORS, EDITABLE_STATUSES, ERP_DOWNLOADABLE_STATUSES, type OrderStatus } from '@/types/order-status';
 import OrderActions from '@/components/order/OrderActions';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -60,7 +60,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <h1 className="text-2xl font-bold">주문 상세</h1>
           <p className="text-gray-500">{customer.short_name} - {site.site_name}</p>
         </div>
-        <Badge className="text-base px-3 py-1">{ORDER_STATUS[status]}</Badge>
+        <Badge className={`text-base px-3 py-1 ${STATUS_COLORS[status]}`}>{ORDER_STATUS[status]}</Badge>
       </div>
 
       {/* 기본 정보 */}
@@ -117,7 +117,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
       {/* 액션 버튼 */}
       <div className="flex gap-3 flex-wrap">
-        {(status === 'draft' || status === 'completed' || status === 'rejected_by_customer' || status === 'rejected_by_admin') &&
+        {EDITABLE_STATUSES.includes(status) &&
          user && (order.created_by === user.id || ['biz_support', 'system_admin'].includes(user.role)) && (
           <>
             <Link href={`/orders/${id}/edit`}>
@@ -129,7 +129,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         <Link href={`/orders/${id}/preview`}>
           <Button variant="outline"><FileText className="mr-2 h-4 w-4" />주문의뢰서 보기</Button>
         </Link>
-        {(['final_approved', 'erp_completed', 'work_order_created', 'in_production', 'production_completed'].includes(status)) && (
+        {ERP_DOWNLOADABLE_STATUSES.includes(status) && (
           <Link href={`/orders/${id}/erp-preview`}>
             <Button variant="outline"><FileSpreadsheet className="mr-2 h-4 w-4" />ERP 엑셀</Button>
           </Link>

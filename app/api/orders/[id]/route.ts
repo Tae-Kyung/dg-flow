@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { getCurrentUser } from '@/lib/auth/get-user';
+import { EDITABLE_STATUSES } from '@/types/order-status';
 import { NextRequest, NextResponse } from 'next/server';
 
 // PUT /api/orders/[id] - 주문 수정 (초안/반려 상태에서만)
@@ -28,7 +29,7 @@ export async function PUT(
     return NextResponse.json({ error: '본인이 작성한 주문만 수정할 수 있습니다.' }, { status: 403 });
   }
 
-  const editable = ['draft', 'completed', 'rejected_by_customer', 'rejected_by_admin'];
+  const editable = EDITABLE_STATUSES;
   if (!editable.includes(order.status)) {
     return NextResponse.json({ error: '현재 상태에서는 수정할 수 없습니다.' }, { status: 400 });
   }
@@ -124,7 +125,7 @@ export async function DELETE(
     return NextResponse.json({ error: '본인이 작성한 주문만 삭제할 수 있습니다.' }, { status: 403 });
   }
 
-  const deletable = ['draft', 'completed', 'rejected_by_customer', 'rejected_by_admin'];
+  const deletable = EDITABLE_STATUSES;
   if (!deletable.includes(order.status)) {
     return NextResponse.json({ error: '초안 또는 반려 상태에서만 삭제할 수 있습니다.' }, { status: 400 });
   }

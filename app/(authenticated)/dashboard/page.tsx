@@ -5,6 +5,8 @@ import { ORDER_STATUS, type OrderStatus } from '@/types/order-status';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
+import OrderTrendChart from '@/components/dashboard/OrderTrendChart';
+import { format, subDays } from 'date-fns';
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -52,6 +54,27 @@ export default async function DashboardPage() {
     .select(`*, customer:dgflow_customers(short_name), site:dgflow_sites(site_name), creator:dgflow_users!created_by(name)`)
     .order('created_at', { ascending: false })
     .limit(5);
+
+  // 최근 30일 추이 데이터
+  const thirtyDaysAgo = format(subDays(new Date(), 30), 'yyyy-MM-dd');
+  const { data: trendOrders } = await supabase
+    .from('dgflow_orders')
+    .select('order_date, total_quantity, total_area_m2')
+    .gte('order_date', thirtyDaysAgo);
+
+  const trendMap = new Map<string, { count: number; quantity: number; area: number }>();
+  (trendOrders || []).forEach(o => {
+    const date = o.order_date;
+    const prev = trendMap.get(date) || { count: 0, quantity: 0, area: 0 };
+    trendMap.set(date, {
+      count: prev.count + 1,
+      quantity: prev.quantity + o.total_quantity,
+      area: prev.area + Number(o.total_area_m2),
+    });
+  });
+  const trendData = [...trendMap.entries()]
+    .map(([date, v]) => ({ date: date.slice(5), ...v }))
+    .sort((a, b) => a.date.localeCompare(b.date));
 
   // 거래처별 집계
   const { data: customerStats } = await supabase
@@ -119,6 +142,14 @@ export default async function DashboardPage() {
               );
             })}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* 주문 추이 차트 */}
+      <Card>
+        <CardHeader><CardTitle className="text-lg">최근 30일 주문 추이</CardTitle></CardHeader>
+        <CardContent>
+          <OrderTrendChart data={trendData} />
         </CardContent>
       </Card>
 

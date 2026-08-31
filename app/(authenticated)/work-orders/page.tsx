@@ -45,7 +45,10 @@ export default async function WorkOrdersPage() {
                     <TableCell>{wo.request_date}</TableCell>
                     <TableCell>{wo.delivery_date || '-'}</TableCell>
                     <TableCell><Badge variant="secondary">{WO_STATUS[wo.status]}</Badge></TableCell>
-                    <TableCell><Link href={`/production/${wo.id}`} className="text-blue-600 hover:underline text-sm">생산입력</Link></TableCell>
+                    <TableCell className="space-x-2">
+                      <Link href={`/cutting/${wo.id}`} className="text-blue-600 hover:underline text-sm">재단</Link>
+                      <Link href={`/production/${wo.id}`} className="text-blue-600 hover:underline text-sm">생산</Link>
+                    </TableCell>
                   </TableRow>
                 );
               })}

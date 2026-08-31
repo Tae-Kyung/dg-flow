@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { getCurrentUser } from '@/lib/auth/get-user';
 import { canTransition, type OrderStatus } from '@/types/order-status';
+import { createNotifications } from '@/lib/notification/create';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function PATCH(
@@ -20,7 +21,7 @@ export async function PATCH(
   // 현재 주문 조회
   const { data: order } = await supabase
     .from('dgflow_orders')
-    .select('status')
+    .select('status, created_by')
     .eq('id', id)
     .single();
 
@@ -55,6 +56,9 @@ export async function PATCH(
     changed_by: user.id,
     comment: comment || null,
   });
+
+  // 알림 생성
+  await createNotifications(id, newStatus as OrderStatus, order.created_by);
 
   return NextResponse.json({ success: true });
 }

@@ -10,6 +10,7 @@ import {
   LayoutDashboard, ClipboardList, FileCheck, CheckCircle,
   Factory, Database, Users, LogOut,
 } from 'lucide-react';
+import NotificationBell from './NotificationBell';
 
 const ICON_MAP: Record<string, React.ElementType> = {
   LayoutDashboard, ClipboardList, FileCheck, CheckCircle,
@@ -27,9 +28,12 @@ export default function Sidebar({ userName, userRole }: SidebarProps) {
 
   return (
     <aside className="flex h-screen w-60 flex-col border-r bg-white">
-      <div className="border-b px-4 py-4">
-        <h1 className="text-xl font-bold text-gray-900">DG-Flow</h1>
-        <p className="text-xs text-gray-500">동일유리 주문관리</p>
+      <div className="border-b px-4 py-4 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">DG-Flow</h1>
+          <p className="text-xs text-gray-500">동일유리 주문관리</p>
+        </div>
+        <NotificationBell />
       </div>
 
       <nav className="flex-1 space-y-1 px-2 py-4">

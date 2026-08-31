@@ -8,7 +8,8 @@ import { ORDER_STATUS, type OrderStatus } from '@/types/order-status';
 import OrderActions from '@/components/order/OrderActions';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { FileText, FileSpreadsheet, Pencil } from 'lucide-react';
+import { FileText, FileSpreadsheet, Pencil, Trash2 } from 'lucide-react';
+import DeleteOrderButton from '@/components/order/DeleteOrderButton';
 
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -110,9 +111,12 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       {/* 액션 버튼 */}
       <div className="flex gap-3 flex-wrap">
         {(status === 'draft' || status === 'rejected_by_customer' || status === 'rejected_by_admin') && (
-          <Link href={`/orders/${id}/edit`}>
-            <Button variant="outline"><Pencil className="mr-2 h-4 w-4" />수정</Button>
-          </Link>
+          <>
+            <Link href={`/orders/${id}/edit`}>
+              <Button variant="outline"><Pencil className="mr-2 h-4 w-4" />수정</Button>
+            </Link>
+            <DeleteOrderButton orderId={id} />
+          </>
         )}
         <Link href={`/orders/${id}/preview`}>
           <Button variant="outline"><FileText className="mr-2 h-4 w-4" />주문의뢰서 보기</Button>

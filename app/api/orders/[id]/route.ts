@@ -92,3 +92,35 @@ export async function PUT(
 
   return NextResponse.json({ success: true });
 }
+
+// DELETE /api/orders/[id] - 주문 삭제 (초안/반려 상태에서만)
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const supabase = await createServerSupabaseClient();
+
+  const { data: order } = await supabase
+    .from('dgflow_orders')
+    .select('status')
+    .eq('id', id)
+    .single();
+
+  if (!order) return NextResponse.json({ error: '주문을 찾을 수 없습니다.' }, { status: 404 });
+
+  const deletable = ['draft', 'rejected_by_customer', 'rejected_by_admin'];
+  if (!deletable.includes(order.status)) {
+    return NextResponse.json({ error: '초안 또는 반려 상태에서만 삭제할 수 있습니다.' }, { status: 400 });
+  }
+
+  // CASCADE로 order_items, approvals, tokens, status_logs 자동 삭제
+  const { error } = await supabase.from('dgflow_orders').delete().eq('id', id);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json({ success: true });
+}

@@ -23,7 +23,7 @@ export const STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   rejected_by_customer: ['pending_customer'],
   customer_approved: ['under_review'],
   under_review: ['review_completed'],
-  review_completed: ['pending_approval'],
+  review_completed: ['pending_approval', 'final_approved', 'rejected_by_admin'],
   pending_approval: ['final_approved', 'rejected_by_admin'],
   rejected_by_admin: ['under_review'],
   final_approved: ['erp_completed'],

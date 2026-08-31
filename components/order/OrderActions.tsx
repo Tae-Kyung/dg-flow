@@ -15,13 +15,14 @@ interface OrderActionsProps {
 }
 
 const ROLE_ACTIONS: Record<string, OrderStatus[]> = {
-  construction_mgr: ['pending_customer'],
+  construction_mgr: ['completed', 'pending_customer'],
   biz_support: ['under_review', 'review_completed', 'erp_completed'],
   admin: ['final_approved', 'rejected_by_admin'],
-  system_admin: ['pending_customer', 'under_review', 'review_completed', 'final_approved', 'rejected_by_admin', 'erp_completed', 'work_order_created'],
+  system_admin: ['completed', 'pending_customer', 'under_review', 'review_completed', 'final_approved', 'rejected_by_admin', 'erp_completed', 'work_order_created'],
 };
 
 const ACTION_LABELS: Partial<Record<OrderStatus, { label: string; icon: typeof Send; variant: 'default' | 'destructive' | 'outline' }>> = {
+  completed: { label: '작성 완료', icon: CheckCircle, variant: 'default' },
   pending_customer: { label: '고객에게 승인 요청', icon: Send, variant: 'default' },
   under_review: { label: '검토 시작', icon: CheckCircle, variant: 'default' },
   review_completed: { label: '검토 완료', icon: CheckCircle, variant: 'default' },

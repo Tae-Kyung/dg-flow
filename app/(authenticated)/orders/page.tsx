@@ -11,6 +11,7 @@ import { hasPermission } from '@/lib/auth/role-guard';
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-800',
+  completed: 'bg-blue-50 text-blue-800',
   pending_customer: 'bg-yellow-100 text-yellow-800',
   rejected_by_customer: 'bg-red-100 text-red-800',
   customer_approved: 'bg-blue-100 text-blue-800',

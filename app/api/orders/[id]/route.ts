@@ -22,7 +22,7 @@ export async function PUT(
 
   if (!order) return NextResponse.json({ error: '주문을 찾을 수 없습니다.' }, { status: 404 });
 
-  const editable = ['draft', 'rejected_by_customer', 'rejected_by_admin'];
+  const editable = ['draft', 'completed', 'rejected_by_customer', 'rejected_by_admin'];
   if (!editable.includes(order.status)) {
     return NextResponse.json({ error: '현재 상태에서는 수정할 수 없습니다.' }, { status: 400 });
   }
@@ -112,7 +112,7 @@ export async function DELETE(
 
   if (!order) return NextResponse.json({ error: '주문을 찾을 수 없습니다.' }, { status: 404 });
 
-  const deletable = ['draft', 'rejected_by_customer', 'rejected_by_admin'];
+  const deletable = ['draft', 'completed', 'rejected_by_customer', 'rejected_by_admin'];
   if (!deletable.includes(order.status)) {
     return NextResponse.json({ error: '초안 또는 반려 상태에서만 삭제할 수 있습니다.' }, { status: 400 });
   }

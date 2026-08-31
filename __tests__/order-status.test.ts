@@ -2,12 +2,20 @@ import { describe, it, expect } from 'vitest';
 import { canTransition } from '@/types/order-status';
 
 describe('canTransition', () => {
-  it('초안 → 고객승인대기 가능', () => {
-    expect(canTransition('draft', 'pending_customer')).toBe(true);
+  it('작성중 → 작성완료 가능', () => {
+    expect(canTransition('draft', 'completed')).toBe(true);
   });
 
-  it('초안 → 최종승인 불가', () => {
-    expect(canTransition('draft', 'final_approved')).toBe(false);
+  it('작성중 → 고객승인대기 불가 (작성완료를 거쳐야 함)', () => {
+    expect(canTransition('draft', 'pending_customer')).toBe(false);
+  });
+
+  it('작성완료 → 고객승인대기 가능', () => {
+    expect(canTransition('completed', 'pending_customer')).toBe(true);
+  });
+
+  it('작성완료 → 다시 작성중(수정) 가능', () => {
+    expect(canTransition('completed', 'draft')).toBe(true);
   });
 
   it('고객승인대기 → 고객승인완료 가능', () => {
@@ -18,8 +26,8 @@ describe('canTransition', () => {
     expect(canTransition('pending_customer', 'rejected_by_customer')).toBe(true);
   });
 
-  it('반려-수정중 → 고객승인대기 가능 (재전송)', () => {
-    expect(canTransition('rejected_by_customer', 'pending_customer')).toBe(true);
+  it('반려-수정중 → 작성완료 가능 (수정 후 재전송)', () => {
+    expect(canTransition('rejected_by_customer', 'completed')).toBe(true);
   });
 
   it('최종승인 → ERP입력완료 가능', () => {

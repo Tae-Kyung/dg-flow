@@ -1,5 +1,6 @@
 export const ORDER_STATUS = {
-  draft: '초안',
+  draft: '작성중',
+  completed: '작성완료',
   pending_customer: '고객승인대기',
   rejected_by_customer: '반려-수정중',
   customer_approved: '고객승인완료',
@@ -18,9 +19,10 @@ export type OrderStatus = keyof typeof ORDER_STATUS;
 
 // 허용된 상태 전이
 export const STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  draft: ['pending_customer'],
+  draft: ['completed'],                    // 작성중 → 작성완료
+  completed: ['pending_customer', 'draft'], // 작성완료 → 고객전송 또는 다시 수정
   pending_customer: ['customer_approved', 'rejected_by_customer'],
-  rejected_by_customer: ['pending_customer'],
+  rejected_by_customer: ['completed'],      // 반려 → 수정 후 작성완료
   customer_approved: ['under_review'],
   under_review: ['review_completed'],
   review_completed: ['pending_approval', 'final_approved', 'rejected_by_admin'],

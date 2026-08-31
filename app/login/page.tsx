@@ -84,6 +84,20 @@ export default function LoginPage() {
           </form>
         </CardContent>
       </Card>
+
+      {/* 테스트 계정 안내 */}
+      <Card className="w-full max-w-md mt-4 opacity-70">
+        <CardContent className="py-3">
+          <p className="text-xs font-medium text-gray-500 mb-2">테스트 계정 (비밀번호: dgflow2026!)</p>
+          <div className="grid grid-cols-2 gap-1 text-xs text-gray-500">
+            <span>관리자:</span><span className="font-mono">admin@dgflow.kr</span>
+            <span>공사관리부:</span><span className="font-mono">construction@dgflow.kr</span>
+            <span>경영지원팀:</span><span className="font-mono">support@dgflow.kr</span>
+            <span>생산관리팀:</span><span className="font-mono">production@dgflow.kr</span>
+            <span>시스템관리자:</span><span className="font-mono">sysadmin@dgflow.kr</span>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

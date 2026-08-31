@@ -28,7 +28,7 @@ export const STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   review_completed: ['pending_approval', 'final_approved', 'rejected_by_admin'],
   pending_approval: ['final_approved', 'rejected_by_admin'],
   rejected_by_admin: ['under_review'],
-  final_approved: ['work_order_created'],    // 최종승인 → 작업의뢰서 자동 생성
+  final_approved: ['work_order_created', 'review_completed'],  // 승인 또는 승인취소(검토완료로 복귀)
   erp_completed: ['work_order_created'],    // (하위호환 유지)
   work_order_created: ['in_production'],
   in_production: ['production_completed'],

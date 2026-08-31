@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createServiceRoleClient } from '@/lib/supabase/server';
 import { getCurrentUser } from '@/lib/auth/get-user';
 import { NextRequest, NextResponse } from 'next/server';
 import { format } from 'date-fns';
@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { order_id } = await request.json();
-  const supabase = await createServerSupabaseClient();
+  const supabase = createServiceRoleClient();
 
   // 주문 확인
   const { data: order } = await supabase
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
   // 주문 상태 변경
   await supabase.from('dgflow_orders').update({ status: 'work_order_created' }).eq('id', order_id);
   await supabase.from('dgflow_order_status_logs').insert({
-    order_id, from_status: 'erp_completed', to_status: 'work_order_created',
+    order_id, from_status: order.status, to_status: 'work_order_created',
     changed_by: user.id, comment: `작업의뢰서 ${workOrderNumber} 생성`,
   });
 
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
 
 // GET: 작업의뢰서 목록
 export async function GET() {
-  const supabase = await createServerSupabaseClient();
+  const supabase = createServiceRoleClient();
 
   const { data, error } = await supabase
     .from('dgflow_work_orders')

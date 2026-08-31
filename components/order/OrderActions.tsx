@@ -17,7 +17,7 @@ interface OrderActionsProps {
 const ROLE_ACTIONS: Record<string, OrderStatus[]> = {
   construction_mgr: ['completed', 'pending_customer'],
   biz_support: ['under_review', 'review_completed'],
-  admin: ['final_approved', 'rejected_by_admin'],
+  admin: ['final_approved', 'rejected_by_admin', 'review_completed'],
   system_admin: ['completed', 'pending_customer', 'under_review', 'review_completed', 'final_approved', 'rejected_by_admin', 'work_order_created'],
 };
 
@@ -162,6 +162,16 @@ export default function OrderActions({ orderId, currentStatus, userRole }: Order
                 <Button key={status} onClick={handleFinalApprove} disabled={loading}>
                   <CheckCircle className="mr-2 h-4 w-4" />
                   최종 승인 (작업의뢰서 자동 생성)
+                </Button>
+              );
+            }
+
+            // 승인 취소 (final_approved 상태에서 review_completed로 복귀)
+            if (status === 'review_completed' && currentStatus === 'final_approved') {
+              return (
+                <Button key="cancel_approve" variant="destructive" onClick={() => handleAction('review_completed' as OrderStatus)} disabled={loading}>
+                  <XCircle className="mr-2 h-4 w-4" />
+                  승인 취소
                 </Button>
               );
             }

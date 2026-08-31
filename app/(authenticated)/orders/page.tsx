@@ -81,13 +81,17 @@ export default async function OrdersPage() {
                 </TableRow>
               ) : (
                 orders.map((order) => (
-                  <TableRow key={order.id}>
+                  <TableRow key={order.id} className="cursor-pointer hover:bg-gray-50">
                     <TableCell>
                       <Link href={`/orders/${order.id}`} className="text-blue-600 hover:underline font-medium">
-                        {order.order_number || '-'}
+                        {order.order_number || `초안-${order.id.slice(0, 6)}`}
                       </Link>
                     </TableCell>
-                    <TableCell>{(order.customer as { short_name: string })?.short_name}</TableCell>
+                    <TableCell>
+                      <Link href={`/orders/${order.id}`} className="hover:underline">
+                        {(order.customer as { short_name: string })?.short_name}
+                      </Link>
+                    </TableCell>
                     <TableCell className="max-w-[200px] truncate">{(order.site as { site_name: string })?.site_name}</TableCell>
                     <TableCell>{order.order_date}</TableCell>
                     <TableCell>{order.delivery_date || '-'}</TableCell>

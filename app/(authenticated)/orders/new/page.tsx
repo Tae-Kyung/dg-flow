@@ -11,6 +11,8 @@ import { Textarea } from '@/components/ui/textarea';
 // 네이티브 select 사용 (@base-ui Select가 value를 그대로 표시하는 문제 회피)
 import { Plus, Trash2, Save } from 'lucide-react';
 import { calculateArea } from '@/lib/calc/area';
+import ExcelUpload from '@/components/order/ExcelUpload';
+import type { ParsedOrderItem } from '@/lib/parser/excel-order';
 
 interface OrderItem {
   product_name: string;
@@ -92,6 +94,24 @@ export default function NewOrderPage() {
   const totalQuantity = items.reduce((s, i) => s + (parseInt(i.quantity) || 0), 0);
   const totalArea = items.reduce((s, i) =>
     s + calculateArea(parseInt(i.width_mm) || 0, parseInt(i.height_mm) || 0, parseInt(i.quantity) || 0), 0);
+
+  function handleExcelParsed(parsedItems: ParsedOrderItem[]) {
+    const newItems: OrderItem[] = parsedItems.map(p => ({
+      product_name: p.product_name,
+      product_id: products.find(pr => pr.display_name === p.product_name)?.id || '',
+      width_mm: p.width_mm,
+      height_mm: p.height_mm,
+      quantity: p.quantity || '1',
+      location_dong: p.location_dong,
+      location_line: p.location_line,
+      location_floor: p.location_floor,
+      location_room: p.location_room,
+      location_type: p.location_type,
+      location_window_type: p.location_window_type,
+      remark: p.remark,
+    }));
+    setItems(newItems.length > 0 ? newItems : [{ ...emptyItem }]);
+  }
 
   async function handleSave() {
     setError('');
@@ -182,11 +202,14 @@ export default function NewOrderPage() {
 
       {/* 품목 입력 */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg">품목 목록</CardTitle>
-          <div className="text-sm text-gray-500">
-            총 수량: <span className="font-bold">{totalQuantity}</span> | 총 면적: <span className="font-bold">{totalArea.toFixed(2)} m²</span>
+        <CardHeader className="space-y-3">
+          <div className="flex flex-row items-center justify-between">
+            <CardTitle className="text-lg">품목 목록</CardTitle>
+            <div className="text-sm text-gray-500">
+              총 수량: <span className="font-bold">{totalQuantity}</span> | 총 면적: <span className="font-bold">{totalArea.toFixed(2)} m²</span>
+            </div>
           </div>
+          <ExcelUpload onParsed={handleExcelParsed} />
         </CardHeader>
         <CardContent className="space-y-4">
           {items.map((item, idx) => (

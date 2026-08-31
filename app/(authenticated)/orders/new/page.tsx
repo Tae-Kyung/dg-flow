@@ -184,7 +184,13 @@ export default function NewOrderPage() {
 
   return (
     <div className="space-y-6 max-w-6xl">
-      <h1 className="text-2xl font-bold">새 주문 생성</h1>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">새 주문 생성</h1>
+          <p className="text-sm text-gray-500 mt-1">직접 입력하거나, 기존 발주서 엑셀을 업로드하여 자동으로 채울 수 있습니다.</p>
+        </div>
+        <ExcelUpload onParsed={handleExcelParsed} />
+      </div>
 
       {/* 기본 정보 */}
       <Card>
@@ -230,14 +236,11 @@ export default function NewOrderPage() {
 
       {/* 품목 입력 */}
       <Card>
-        <CardHeader className="space-y-3">
-          <div className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg">품목 목록</CardTitle>
-            <div className="text-sm text-gray-500">
-              총 수량: <span className="font-bold">{totalQuantity}</span> | 총 면적: <span className="font-bold">{totalArea.toFixed(2)} m²</span>
-            </div>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-lg">품목 목록</CardTitle>
+          <div className="text-sm text-gray-500">
+            총 수량: <span className="font-bold">{totalQuantity}</span> | 총 면적: <span className="font-bold">{totalArea.toFixed(2)} m²</span>
           </div>
-          <ExcelUpload onParsed={handleExcelParsed} />
         </CardHeader>
         <CardContent className="space-y-4">
           {items.map((item, idx) => (

@@ -1,3 +1,4 @@
+import React from 'react';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
@@ -109,7 +110,7 @@ export default async function OrderPreviewPage({ params }: { params: Promise<{ i
             </thead>
             <tbody>
               {groups.map((group, gi) => (
-                <>
+                <React.Fragment key={gi}>
                   {group.items.map((item: typeof orderItems[0], ii: number) => (
                     <tr key={item.id}>
                       <td className="border border-gray-400 px-2 py-1 text-center">{gi * 100 + ii + 1}</td>
@@ -128,7 +129,7 @@ export default async function OrderPreviewPage({ params }: { params: Promise<{ i
                     <td className="border border-gray-400 px-2 py-1 text-right">{group.subtotal_area.toFixed(2)}</td>
                     <td className="border border-gray-400 px-2 py-1"></td>
                   </tr>
-                </>
+                </React.Fragment>
               ))}
               <tr className="bg-gray-200 font-bold">
                 <td className="border border-gray-400 px-2 py-1.5" colSpan={3}>합 계</td>

@@ -21,7 +21,7 @@ export type OrderStatus = keyof typeof ORDER_STATUS;
 export const STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   draft: ['completed'],                    // 작성중 → 작성완료
   completed: ['pending_customer', 'draft'], // 작성완료 → 고객전송 또는 다시 수정
-  pending_customer: ['customer_approved', 'rejected_by_customer'],
+  pending_customer: ['customer_approved', 'rejected_by_customer', 'completed'],  // 고객 승인 전 취소(작성완료로 복귀)
   rejected_by_customer: ['completed'],      // 반려 → 수정 후 작성완료
   customer_approved: ['under_review'],
   under_review: ['review_completed'],

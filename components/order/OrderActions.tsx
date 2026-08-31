@@ -156,6 +156,16 @@ export default function OrderActions({ orderId, currentStatus, userRole }: Order
               );
             }
 
+            // 고객 전송 취소 (pending_customer → completed 복귀)
+            if (status === 'completed' && currentStatus === 'pending_customer') {
+              return (
+                <Button key="cancel_send" variant="destructive" onClick={() => handleAction('completed' as OrderStatus)} disabled={loading}>
+                  <XCircle className="mr-2 h-4 w-4" />
+                  전송 취소
+                </Button>
+              );
+            }
+
             // 최종승인 → 작업의뢰서 자동 생성
             if (status === 'final_approved') {
               return (

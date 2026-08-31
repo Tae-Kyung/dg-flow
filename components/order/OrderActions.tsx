@@ -16,9 +16,9 @@ interface OrderActionsProps {
 
 const ROLE_ACTIONS: Record<string, OrderStatus[]> = {
   construction_mgr: ['completed', 'pending_customer'],
-  biz_support: ['under_review', 'review_completed', 'erp_completed'],
+  biz_support: ['under_review', 'review_completed'],
   admin: ['final_approved', 'rejected_by_admin'],
-  system_admin: ['completed', 'pending_customer', 'under_review', 'review_completed', 'final_approved', 'rejected_by_admin', 'erp_completed', 'work_order_created'],
+  system_admin: ['completed', 'pending_customer', 'under_review', 'review_completed', 'final_approved', 'rejected_by_admin', 'work_order_created'],
 };
 
 const ACTION_LABELS: Partial<Record<OrderStatus, { label: string; icon: typeof Send; variant: 'default' | 'destructive' | 'outline' }>> = {
@@ -61,6 +61,24 @@ export default function OrderActions({ orderId, currentStatus, userRole }: Order
 
   async function handleWorkOrderCreate() {
     setLoading(true);
+    await fetch('/api/work-orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order_id: orderId }),
+    });
+    setLoading(false);
+    router.refresh();
+  }
+
+  async function handleFinalApprove() {
+    setLoading(true);
+    // 1. 최종승인 상태 변경
+    await fetch(`/api/orders/${orderId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'final_approved' }),
+    });
+    // 2. 작업의뢰서 자동 생성
     await fetch('/api/work-orders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -138,7 +156,17 @@ export default function OrderActions({ orderId, currentStatus, userRole }: Order
               );
             }
 
-            // 작업의뢰서 생성은 별도 핸들러
+            // 최종승인 → 작업의뢰서 자동 생성
+            if (status === 'final_approved') {
+              return (
+                <Button key={status} onClick={handleFinalApprove} disabled={loading}>
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  최종 승인 (작업의뢰서 자동 생성)
+                </Button>
+              );
+            }
+
+            // 작업의뢰서 수동 생성 (하위호환)
             if (status === 'work_order_created') {
               return (
                 <Button key={status} onClick={handleWorkOrderCreate} disabled={loading}>

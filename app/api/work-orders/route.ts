@@ -18,8 +18,9 @@ export async function POST(request: NextRequest) {
     .eq('id', order_id)
     .single();
 
-  if (!order || order.status !== 'erp_completed') {
-    return NextResponse.json({ error: 'ERP 입력 완료 상태의 주문만 작업의뢰서를 생성할 수 있습니다.' }, { status: 400 });
+  const allowedStatuses = ['final_approved', 'erp_completed'];
+  if (!order || !allowedStatuses.includes(order.status)) {
+    return NextResponse.json({ error: '최종승인 또는 ERP 입력 완료 상태에서만 작업의뢰서를 생성할 수 있습니다.' }, { status: 400 });
   }
 
   // 의뢰번호 채번: YY-NNNN

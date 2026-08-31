@@ -30,8 +30,8 @@ describe('canTransition', () => {
     expect(canTransition('rejected_by_customer', 'completed')).toBe(true);
   });
 
-  it('최종승인 → ERP입력완료 가능', () => {
-    expect(canTransition('final_approved', 'erp_completed')).toBe(true);
+  it('최종승인 → 작업의뢰서생성 가능 (자동 생성)', () => {
+    expect(canTransition('final_approved', 'work_order_created')).toBe(true);
   });
 
   it('생산완료 → 어디로도 전이 불가', () => {

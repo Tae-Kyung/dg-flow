@@ -121,9 +121,9 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         <Link href={`/orders/${id}/preview`}>
           <Button variant="outline"><FileText className="mr-2 h-4 w-4" />주문의뢰서 보기</Button>
         </Link>
-        {(status === 'final_approved' || status === 'erp_completed') && (
+        {(['final_approved', 'erp_completed', 'work_order_created', 'in_production', 'production_completed'].includes(status)) && (
           <Link href={`/orders/${id}/erp-preview`}>
-            <Button variant="outline"><FileSpreadsheet className="mr-2 h-4 w-4" />ERP 데이터</Button>
+            <Button variant="outline"><FileSpreadsheet className="mr-2 h-4 w-4" />ERP 엑셀</Button>
           </Link>
         )}
         {user && <OrderActions orderId={order.id} currentStatus={status} userRole={user.role} />}

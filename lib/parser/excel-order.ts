@@ -128,7 +128,18 @@ function extractMeta(rows: string[][]): ParsedOrderMeta {
     delivery_date: { keywords: ['납품일', '출고일', '납기일', '납품일자', '납기', '납기일자', '현장납기일'], field: 'delivery_date' },
   };
 
-  // 상단 15행만 스캔
+  // 모든 키워드를 하나의 Set으로 수집 (다른 라벨인지 판별용)
+  const allKeywords = new Set<string>();
+  for (const { keywords } of Object.values(META_PATTERNS)) {
+    keywords.forEach(kw => allKeywords.add(kw));
+  }
+
+  function isOtherLabel(val: string): boolean {
+    const normalized = val.replace(/\s+/g, '');
+    return [...allKeywords].some(kw => normalized.includes(kw));
+  }
+
+  // 상단 15행 스캔 — 각 필드별 독립 탐색
   for (let i = 0; i < Math.min(15, rows.length); i++) {
     const row = rows[i];
     if (!Array.isArray(row)) continue;
@@ -136,26 +147,40 @@ function extractMeta(rows: string[][]): ParsedOrderMeta {
     for (let j = 0; j < row.length; j++) {
       const cell = String(row[j] ?? '').trim();
       if (!cell) continue;
+      const cellNoSpace = cell.replace(/\s+/g, '');
 
       for (const { keywords, field } of Object.values(META_PATTERNS)) {
-        if (meta[field]) continue; // 이미 찾은 경우 건너뛰기
+        if (meta[field]) continue;
 
-        const isLabel = keywords.some(kw => cell.includes(kw));
-        if (isLabel) {
-          // 다음 셀에 값이 있을 가능성
-          const nextCell = String(row[j + 1] ?? '').trim();
-          // 또는 같은 셀에 "라벨: 값" 형식
-          const colonSplit = cell.split(/[:：]/);
+        const isLabel = keywords.some(kw => cellNoSpace === kw || (cellNoSpace.length < kw.length + 5 && cellNoSpace.includes(kw)));
+        if (!isLabel) continue;
 
-          if (nextCell && nextCell.length > 1) {
-            meta[field] = formatMetaValue(nextCell, field);
-          } else if (colonSplit.length > 1 && colonSplit[1].trim()) {
-            meta[field] = formatMetaValue(colonSplit[1].trim(), field);
-          } else {
-            // 아래 행에 값이 있을 수 있음
+        // 다음 셀에 값이 있는지 확인
+        const nextCell = String(row[j + 1] ?? '').trim();
+        // 같은 셀에 "라벨: 값" 형식
+        const colonSplit = cell.split(/[:：]/);
+
+        if (nextCell && nextCell.length > 1 && !isOtherLabel(nextCell)) {
+          meta[field] = formatMetaValue(nextCell, field);
+        } else if (colonSplit.length > 1 && colonSplit[1].trim()) {
+          meta[field] = formatMetaValue(colonSplit[1].trim(), field);
+        } else {
+          // j+2, j+3 셀 확인 (병합 셀 때문에 빈 셀 건너뛸 수 있음)
+          for (let k = j + 1; k < Math.min(j + 4, row.length); k++) {
+            const val = String(row[k] ?? '').trim();
+            if (val && val.length > 1 && !isOtherLabel(val)) {
+              meta[field] = formatMetaValue(val, field);
+              break;
+            }
+          }
+          // 아래 행 확인
+          if (!meta[field]) {
             const belowRow = rows[i + 1];
-            if (belowRow && belowRow[j]) {
-              meta[field] = formatMetaValue(String(belowRow[j]).trim(), field);
+            if (belowRow) {
+              const belowVal = String(belowRow[j] ?? '').trim();
+              if (belowVal && belowVal.length > 1 && !isOtherLabel(belowVal)) {
+                meta[field] = formatMetaValue(belowVal, field);
+              }
             }
           }
         }
@@ -168,18 +193,18 @@ function extractMeta(rows: string[][]): ParsedOrderMeta {
 
 function formatMetaValue(value: string, field: keyof ParsedOrderMeta): string {
   if (field === 'order_date' || field === 'delivery_date') {
-    // Excel 시리얼 번호 (예: 45894 → 2025-09-12)
-    const num = Number(value);
-    if (!isNaN(num) && num > 40000 && num < 60000) {
-      const date = new Date((num - 25569) * 86400 * 1000);
-      if (!isNaN(date.getTime())) {
-        return date.toISOString().split('T')[0];
-      }
-    }
-    // Date 객체
+    // Date 객체 또는 Date 문자열 ("Sun Aug 24 2025 23:59:08 GMT+0900...")
     const date = new Date(value);
     if (!isNaN(date.getTime()) && date.getFullYear() > 2000) {
       return date.toISOString().split('T')[0];
+    }
+    // Excel 시리얼 번호 (예: 45894)
+    const num = Number(value);
+    if (!isNaN(num) && num > 40000 && num < 60000) {
+      const d = new Date((num - 25569) * 86400 * 1000);
+      if (!isNaN(d.getTime())) {
+        return d.toISOString().split('T')[0];
+      }
     }
     // YYYY.MM.DD 또는 YYYY-MM-DD 패턴
     const match = value.match(/(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})/);

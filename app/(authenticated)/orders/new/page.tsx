@@ -114,6 +114,17 @@ export default function NewOrderPage() {
     s + calculateArea(parseInt(i.width_mm) || 0, parseInt(i.height_mm) || 0, parseInt(i.quantity) || 0), 0);
 
   function handleExcelParsed(parsedItems: ParsedOrderItem[], meta: ParsedOrderMeta) {
+    console.log('[handleExcelParsed] called with', parsedItems.length, 'items, meta:', meta);
+    console.log('[handleExcelParsed] customers loaded:', customers.length, 'products loaded:', products.length, 'mappings loaded:', productMappings.length);
+
+    // site_name에서 거래처 추출 시도 (공사명에 "거래처-현장" 형태가 많음)
+    if (!meta.customer_name && meta.site_name) {
+      const parts = meta.site_name.split(/[-_]/);
+      if (parts.length >= 2) {
+        meta.customer_name = parts[0].trim();
+      }
+    }
+
     // 기본정보 자동 채움
     if (meta.customer_name) {
       // "극동건설-성남 금토..." → "극동건설"로 분리 후 매칭
@@ -279,13 +290,13 @@ export default function NewOrderPage() {
           {items.map((item, idx) => (
             <div key={idx} className="grid grid-cols-12 gap-2 items-end border-b pb-4">
               <div className="col-span-3 space-y-1">
-                <Label className="text-xs">품명 *</Label>
+                <Label className="text-xs">품명 * {item.product_name && !item.product_id && <span className="text-orange-500">(미매칭)</span>}</Label>
                 <select
                   className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm"
                   value={item.product_id}
-                  onChange={e => { if (e.target.value) selectProduct(idx, e.target.value); }}
+                  onChange={e => { if (e.target.value) selectProduct(idx, e.target.value); else updateItem(idx, 'product_id', ''); }}
                 >
-                  <option value="">품명 선택</option>
+                  <option value="">{item.product_name || '품명 선택'}</option>
                   {products.map(p => <option key={p.id} value={p.id}>{p.display_name}</option>)}
                 </select>
               </div>

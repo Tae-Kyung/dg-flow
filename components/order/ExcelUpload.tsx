@@ -33,12 +33,19 @@ export default function ExcelUpload({ onParsed }: ExcelUploadProps) {
         return;
       }
 
+      console.log('[ExcelUpload] meta:', result.meta);
+      console.log('[ExcelUpload] items:', result.items.length, result.items.slice(0, 2));
+
       onParsed(result.items, result.meta);
 
+      const metaInfo = [
+        result.meta.site_name && `현장: ${result.meta.site_name}`,
+        result.meta.order_date && `주문일: ${result.meta.order_date}`,
+      ].filter(Boolean).join(', ');
       const warningMsg = result.warnings.length > 0 ? ` (${result.warnings.join(', ')})` : '';
       setStatus({
         type: result.warnings.length > 0 ? 'warning' : 'success',
-        message: `"${result.sheetName}" 시트에서 ${result.items.length}건 품목을 가져왔습니다.${warningMsg}`,
+        message: `"${result.sheetName}" 시트에서 ${result.items.length}건 품목을 가져왔습니다. ${metaInfo}${warningMsg}`,
       });
     } catch (err) {
       setStatus({

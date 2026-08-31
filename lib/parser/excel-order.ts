@@ -225,9 +225,10 @@ function parseRows(
   const columnMap = findColumnMapping(headers, rawData[0] as Record<string, unknown>);
 
   const items: ParsedOrderItem[] = [];
+  let lastProductName = ''; // 품명 병합 셀 대응: 빈 품명이면 이전 품명 상속
 
   for (const row of rawData) {
-    const productName = getString(row, columnMap.product_name);
+    let productName = getString(row, columnMap.product_name);
     const width = getNumber(row, columnMap.width_mm);
     const height = getNumber(row, columnMap.height_mm);
     const quantity = getNumber(row, columnMap.quantity);
@@ -236,6 +237,13 @@ function parseRows(
     if (!productName && !width && !height) continue;
     if (productName && /합계|소계|TOTAL|SUM/i.test(productName)) continue;
     if (width <= 0 || height <= 0) continue;
+
+    // 품명 병합 셀: 품명이 비어있으면 이전 품명 상속
+    if (productName) {
+      lastProductName = productName;
+    } else {
+      productName = lastProductName;
+    }
 
     items.push({
       product_name: productName,

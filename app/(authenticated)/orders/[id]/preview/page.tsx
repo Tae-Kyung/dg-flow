@@ -26,6 +26,24 @@ export default async function OrderPreviewPage({ params }: { params: Promise<{ i
     .eq('order_id', id)
     .order('sort_order');
 
+  // 결재 이력 조회 (검토/승인 단계별 처리자)
+  const { data: statusLogs } = await supabase
+    .from('dgflow_order_status_logs')
+    .select('to_status, changed_by_user:dgflow_users!changed_by(name)')
+    .eq('order_id', id)
+    .order('created_at');
+
+  // 결재란 이름 추출
+  const reviewer = (statusLogs || []).find(l => l.to_status === 'review_completed');
+  const approver = (statusLogs || []).find(l => l.to_status === 'final_approved');
+  function extractName(user: unknown): string {
+    if (!user) return '';
+    if (Array.isArray(user)) return user[0]?.name || '';
+    return (user as { name: string }).name || '';
+  }
+  const reviewerName = extractName(reviewer?.changed_by_user);
+  const approverName = extractName(approver?.changed_by_user);
+
   const customer = order.customer as { name: string };
   const site = order.site as { site_name: string; address: string };
   const creator = order.creator as { name: string };
@@ -89,9 +107,9 @@ export default async function OrderPreviewPage({ params }: { params: Promise<{ i
             <tbody>
               <tr>
                 <td className="border border-gray-400 px-4 py-4 text-center">{creator.name}</td>
-                <td className="border border-gray-400 px-4 py-4"></td>
-                <td className="border border-gray-400 px-4 py-4"></td>
-                <td className="border border-gray-400 px-4 py-4"></td>
+                <td className="border border-gray-400 px-4 py-4 text-center">{reviewerName}</td>
+                <td className="border border-gray-400 px-4 py-4 text-center"></td>
+                <td className="border border-gray-400 px-4 py-4 text-center">{approverName}</td>
               </tr>
             </tbody>
           </table>

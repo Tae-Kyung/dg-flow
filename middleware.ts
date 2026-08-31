@@ -29,13 +29,9 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // 고객 승인 페이지는 비로그인 접근 허용
-  if (request.nextUrl.pathname.startsWith('/approval/')) {
-    return supabaseResponse;
-  }
-
-  // 로그인 페이지는 통과
-  if (request.nextUrl.pathname === '/login') {
+  // 비로그인 접근 허용 경로
+  const publicPaths = ['/login', '/approval/', '/api/auth/'];
+  if (publicPaths.some(p => request.nextUrl.pathname.startsWith(p))) {
     return supabaseResponse;
   }
 

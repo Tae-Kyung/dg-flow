@@ -57,15 +57,16 @@ export default function Sidebar({ userName, userRole }: SidebarProps) {
       <div className="border-t px-4 py-3">
         <p className="text-sm font-medium text-gray-900">{userName}</p>
         <p className="text-xs text-gray-500">{USER_ROLES[userRole]}</p>
-        <form action="/api/auth/signout" method="POST" className="mt-2">
-          <button
-            type="submit"
-            className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-900"
-          >
-            <LogOut className="h-3 w-3" />
-            로그아웃
-          </button>
-        </form>
+        <button
+          onClick={async () => {
+            await fetch('/api/auth/signout', { method: 'POST' });
+            window.location.href = '/login';
+          }}
+          className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-900 mt-2"
+        >
+          <LogOut className="h-3 w-3" />
+          로그아웃
+        </button>
       </div>
     </aside>
   );

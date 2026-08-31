@@ -38,6 +38,7 @@ const emptyItem: OrderItem = {
 interface Customer { id: string; name: string; short_name: string; }
 interface Site { id: string; site_name: string; customer_id: string; }
 interface Product { id: string; display_name: string; product_code: string; }
+interface ProductMapping { product_id: string; variant_name: string; }
 
 export default function NewOrderPage() {
   const router = useRouter();
@@ -46,6 +47,7 @@ export default function NewOrderPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [productMappings, setProductMappings] = useState<ProductMapping[]>([]);
   const [customerId, setCustomerId] = useState('');
   const [siteId, setSiteId] = useState('');
   const [orderDate, setOrderDate] = useState(new Date().toISOString().split('T')[0]);
@@ -61,6 +63,8 @@ export default function NewOrderPage() {
       .then(({ data }) => setCustomers(data || []));
     supabase.from('dgflow_products').select('id, display_name, product_code').eq('is_active', true).order('display_name')
       .then(({ data }) => setProducts(data || []));
+    supabase.from('dgflow_product_name_mappings').select('product_id, variant_name')
+      .then(({ data }) => setProductMappings(data || []));
   }, []);
 
   useEffect(() => {
@@ -112,10 +116,15 @@ export default function NewOrderPage() {
   function handleExcelParsed(parsedItems: ParsedOrderItem[], meta: ParsedOrderMeta) {
     // 기본정보 자동 채움
     if (meta.customer_name) {
-      const matched = customers.find(c =>
-        c.name.includes(meta.customer_name) || c.short_name?.includes(meta.customer_name) ||
-        meta.customer_name.includes(c.name) || meta.customer_name.includes(c.short_name || '')
-      );
+      // "극동건설-성남 금토..." → "극동건설"로 분리 후 매칭
+      const nameTokens = meta.customer_name.split(/[-_\s]/);
+      const matched = customers.find(c => {
+        const cName = c.name.replace(/\(주\)|\(유\)|\(사\)/g, '').trim();
+        const cShort = (c.short_name || '').trim();
+        return nameTokens.some(token =>
+          token.length >= 2 && (cName.includes(token) || cShort.includes(token) || token.includes(cName) || token.includes(cShort))
+        );
+      });
       if (matched) setCustomerId(matched.id);
     }
     if (meta.site_name) setPendingSiteName(meta.site_name);
@@ -123,10 +132,34 @@ export default function NewOrderPage() {
     if (meta.delivery_date) setDeliveryDate(meta.delivery_date);
     if (meta.remark) setRemark(meta.remark);
 
+    // 품명 매칭 헬퍼: display_name 직접 매칭 → variant_name 매칭 → 없으면 빈값
+    function findProductId(parsedName: string): string {
+      if (!parsedName) return '';
+      const normalized = parsedName.replace(/\s+/g, '').toUpperCase();
+      // 1. display_name 직접 매칭
+      const direct = products.find(p => p.display_name === parsedName);
+      if (direct) return direct.id;
+      // 2. variant_name 매칭
+      const mapping = productMappings.find(m =>
+        m.variant_name.replace(/\s+/g, '').toUpperCase() === normalized
+      );
+      if (mapping) return mapping.product_id;
+      // 3. 부분 매칭 (품명에 핵심 키워드 포함)
+      const partial = productMappings.find(m =>
+        normalized.includes(m.variant_name.replace(/\s+/g, '').toUpperCase()) ||
+        m.variant_name.replace(/\s+/g, '').toUpperCase().includes(normalized)
+      );
+      if (partial) return partial.product_id;
+      return '';
+    }
+
     // 품목 자동 채움
-    const newItems: OrderItem[] = parsedItems.map(p => ({
-      product_name: p.product_name,
-      product_id: products.find(pr => pr.display_name === p.product_name)?.id || '',
+    const newItems: OrderItem[] = parsedItems.map(p => {
+      const productId = findProductId(p.product_name);
+      const matchedProduct = products.find(pr => pr.id === productId);
+      return {
+      product_name: matchedProduct?.display_name || p.product_name,
+      product_id: productId,
       width_mm: p.width_mm,
       height_mm: p.height_mm,
       quantity: p.quantity || '1',
@@ -137,7 +170,7 @@ export default function NewOrderPage() {
       location_type: p.location_type,
       location_window_type: p.location_window_type,
       remark: p.remark,
-    }));
+    };});
     setItems(newItems.length > 0 ? newItems : [{ ...emptyItem }]);
   }
 

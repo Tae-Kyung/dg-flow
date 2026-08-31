@@ -117,7 +117,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
       {/* 액션 버튼 */}
       <div className="flex gap-3 flex-wrap">
-        {(status === 'draft' || status === 'completed' || status === 'rejected_by_customer' || status === 'rejected_by_admin') && (
+        {(status === 'draft' || status === 'completed' || status === 'rejected_by_customer' || status === 'rejected_by_admin') &&
+         user && (order.created_by === user.id || ['biz_support', 'system_admin'].includes(user.role)) && (
           <>
             <Link href={`/orders/${id}/edit`}>
               <Button variant="outline"><Pencil className="mr-2 h-4 w-4" />수정</Button>

@@ -13,14 +13,20 @@ export async function PUT(
 
   const supabase = await createServerSupabaseClient();
 
-  // 현재 상태 확인
+  // 현재 상태 + 작성자 확인
   const { data: order } = await supabase
     .from('dgflow_orders')
-    .select('status')
+    .select('status, created_by')
     .eq('id', id)
     .single();
 
   if (!order) return NextResponse.json({ error: '주문을 찾을 수 없습니다.' }, { status: 404 });
+
+  // 본인 주문 또는 경영지원팀/시스템관리자만 수정 가능
+  const canEdit = order.created_by === user.id || ['biz_support', 'system_admin'].includes(user.role);
+  if (!canEdit) {
+    return NextResponse.json({ error: '본인이 작성한 주문만 수정할 수 있습니다.' }, { status: 403 });
+  }
 
   const editable = ['draft', 'completed', 'rejected_by_customer', 'rejected_by_admin'];
   if (!editable.includes(order.status)) {
@@ -106,11 +112,17 @@ export async function DELETE(
 
   const { data: order } = await supabase
     .from('dgflow_orders')
-    .select('status')
+    .select('status, created_by')
     .eq('id', id)
     .single();
 
   if (!order) return NextResponse.json({ error: '주문을 찾을 수 없습니다.' }, { status: 404 });
+
+  // 본인 주문 또는 시스템관리자만 삭제 가능
+  const canDelete = order.created_by === user.id || user.role === 'system_admin';
+  if (!canDelete) {
+    return NextResponse.json({ error: '본인이 작성한 주문만 삭제할 수 있습니다.' }, { status: 403 });
+  }
 
   const deletable = ['draft', 'completed', 'rejected_by_customer', 'rejected_by_admin'];
   if (!deletable.includes(order.status)) {

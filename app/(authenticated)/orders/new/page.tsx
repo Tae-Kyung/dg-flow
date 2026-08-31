@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+// 네이티브 select 사용 (@base-ui Select가 value를 그대로 표시하는 문제 회피)
 import { Plus, Trash2, Save } from 'lucide-react';
 import { calculateArea } from '@/lib/calc/area';
 
@@ -144,21 +144,26 @@ export default function NewOrderPage() {
         <CardContent className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <div className="space-y-2">
             <Label>거래처 *</Label>
-            <Select value={customerId} onValueChange={(v) => setCustomerId(v ?? '')}>
-              <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
-              <SelectContent>
-                {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.short_name || c.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <select
+              className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm"
+              value={customerId}
+              onChange={e => setCustomerId(e.target.value)}
+            >
+              <option value="">선택</option>
+              {customers.map(c => <option key={c.id} value={c.id}>{c.short_name || c.name}</option>)}
+            </select>
           </div>
           <div className="space-y-2">
             <Label>현장 *</Label>
-            <Select value={siteId} onValueChange={(v) => setSiteId(v ?? '')} disabled={!customerId}>
-              <SelectTrigger><SelectValue placeholder={customerId ? '선택' : '거래처 먼저 선택'} /></SelectTrigger>
-              <SelectContent>
-                {sites.map(s => <SelectItem key={s.id} value={s.id}>{s.site_name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <select
+              className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm"
+              value={siteId}
+              onChange={e => setSiteId(e.target.value)}
+              disabled={!customerId}
+            >
+              <option value="">{customerId ? '선택' : '거래처 먼저 선택'}</option>
+              {sites.map(s => <option key={s.id} value={s.id}>{s.site_name}</option>)}
+            </select>
           </div>
           <div className="space-y-2">
             <Label>주문일</Label>
@@ -188,12 +193,14 @@ export default function NewOrderPage() {
             <div key={idx} className="grid grid-cols-12 gap-2 items-end border-b pb-4">
               <div className="col-span-3 space-y-1">
                 <Label className="text-xs">품명 *</Label>
-                <Select value={item.product_id} onValueChange={(v) => { if (v) selectProduct(idx, v); }}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="품명 선택" /></SelectTrigger>
-                  <SelectContent>
-                    {products.map(p => <SelectItem key={p.id} value={p.id}>{p.display_name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <select
+                  className="h-9 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm"
+                  value={item.product_id}
+                  onChange={e => { if (e.target.value) selectProduct(idx, e.target.value); }}
+                >
+                  <option value="">품명 선택</option>
+                  {products.map(p => <option key={p.id} value={p.id}>{p.display_name}</option>)}
+                </select>
               </div>
               <div className="col-span-1 space-y-1">
                 <Label className="text-xs">가로(mm)</Label>

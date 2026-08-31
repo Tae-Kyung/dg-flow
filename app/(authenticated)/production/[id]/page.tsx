@@ -29,21 +29,48 @@ export default function ProductionInputPage() {
   const [items, setItems] = useState<WorkOrderItem[]>([]);
   const [workOrder, setWorkOrder] = useState<{ work_order_number: string } | null>(null);
   const [quantities, setQuantities] = useState<Record<string, string>>({});
+  const [productionDate, setProductionDate] = useState(new Date().toISOString().split('T')[0]);
   const [shift, setShift] = useState('day');
   const [lineNumber, setLineNumber] = useState('1');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [dailyLogs, setDailyLogs] = useState<{ date: string; total_qty: number; total_area: number; count: number; shifts: string }[]>([]);
 
   useEffect(() => {
     supabase.from('dgflow_work_orders').select('work_order_number').eq('id', workOrderId).single()
       .then(({ data }) => setWorkOrder(data));
     loadItems();
+    loadDailyLogs();
   }, [workOrderId]);
 
   async function loadItems() {
     const { data } = await supabase.from('dgflow_work_order_items')
       .select('*').eq('work_order_id', workOrderId).order('sort_order');
     setItems(data || []);
+  }
+
+  async function loadDailyLogs() {
+    const { data } = await supabase
+      .from('dgflow_production_logs')
+      .select('production_date, quantity_completed, area_m2, shift, line_number')
+      .eq('work_order_id', workOrderId)
+      .order('production_date', { ascending: false });
+
+    // 일별 집계
+    const map = new Map<string, { total_qty: number; total_area: number; count: number; shifts: Set<string> }>();
+    (data || []).forEach(log => {
+      const d = log.production_date;
+      const prev = map.get(d) || { total_qty: 0, total_area: 0, count: 0, shifts: new Set<string>() };
+      prev.total_qty += log.quantity_completed;
+      prev.total_area += Number(log.area_m2 || 0);
+      prev.count += 1;
+      prev.shifts.add(`${log.shift === 'night' ? '야' : '주'}간 ${log.line_number}호기`);
+      map.set(d, prev);
+    });
+    setDailyLogs([...map.entries()].map(([date, v]) => ({
+      date, total_qty: v.total_qty, total_area: Math.round(v.total_area * 100) / 100,
+      count: v.count, shifts: [...v.shifts].join(', '),
+    })));
   }
 
   // 입력된 항목이 있는지 확인
@@ -63,6 +90,7 @@ export default function ProductionInputPage() {
           work_order_id: workOrderId,
           work_order_item_id: itemId,
           quantity_completed: parseInt(qty),
+          production_date: productionDate,
           log_type: 'partial',
           shift,
           line_number: parseInt(lineNumber),
@@ -72,6 +100,7 @@ export default function ProductionInputPage() {
 
     setQuantities({});
     await loadItems();
+    await loadDailyLogs();
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -93,6 +122,7 @@ export default function ProductionInputPage() {
           work_order_id: workOrderId,
           work_order_item_id: item.id,
           quantity_completed: remaining,
+          production_date: productionDate,
           log_type: 'full',
           shift,
           line_number: parseInt(lineNumber),
@@ -102,6 +132,7 @@ export default function ProductionInputPage() {
 
     setQuantities({});
     await loadItems();
+    await loadDailyLogs();
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -135,6 +166,10 @@ export default function ProductionInputPage() {
       {/* 공통 옵션 */}
       <Card>
         <CardContent className="py-3 flex items-center gap-6">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">생산일자:</span>
+            <Input type="date" className="h-8 w-40 text-sm" value={productionDate} onChange={e => setProductionDate(e.target.value)} />
+          </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-600">주/야간:</span>
             <select className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm"
@@ -225,6 +260,44 @@ export default function ProductionInputPage() {
           </span>
         )}
       </div>
+
+      {/* 일별 생산 이력 */}
+      {dailyLogs.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle className="text-lg">일별 생산 이력</CardTitle></CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>생산일</TableHead>
+                  <TableHead className="text-right">생산 수량</TableHead>
+                  <TableHead className="text-right">면적(m²)</TableHead>
+                  <TableHead className="text-right">건수</TableHead>
+                  <TableHead>구분</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {dailyLogs.map(log => (
+                  <TableRow key={log.date}>
+                    <TableCell className="font-medium">{log.date}</TableCell>
+                    <TableCell className="text-right">{log.total_qty}</TableCell>
+                    <TableCell className="text-right">{log.total_area.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{log.count}</TableCell>
+                    <TableCell className="text-xs text-gray-500">{log.shifts}</TableCell>
+                  </TableRow>
+                ))}
+                <TableRow className="font-bold bg-gray-50">
+                  <TableCell>합계</TableCell>
+                  <TableCell className="text-right">{dailyLogs.reduce((s, l) => s + l.total_qty, 0)}</TableCell>
+                  <TableCell className="text-right">{dailyLogs.reduce((s, l) => s + l.total_area, 0).toFixed(2)}</TableCell>
+                  <TableCell className="text-right">{dailyLogs.reduce((s, l) => s + l.count, 0)}</TableCell>
+                  <TableCell></TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

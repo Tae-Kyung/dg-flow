@@ -8,7 +8,7 @@ import { ORDER_STATUS, type OrderStatus } from '@/types/order-status';
 import OrderActions from '@/components/order/OrderActions';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { FileText, FileSpreadsheet, Pencil, Trash2 } from 'lucide-react';
+import { FileText, FileSpreadsheet, Pencil, Trash2, Factory } from 'lucide-react';
 import DeleteOrderButton from '@/components/order/DeleteOrderButton';
 
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -40,6 +40,13 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     .select('*, changed_by_user:dgflow_users!changed_by(name)')
     .eq('order_id', id)
     .order('created_at', { ascending: false });
+
+  // 연결된 작업의뢰서
+  const { data: workOrder } = await supabase
+    .from('dgflow_work_orders')
+    .select('id, work_order_number')
+    .eq('order_id', id)
+    .single();
 
   const customer = order.customer as { name: string; short_name: string };
   const site = order.site as { site_name: string; address: string };
@@ -124,6 +131,11 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         {(['final_approved', 'erp_completed', 'work_order_created', 'in_production', 'production_completed'].includes(status)) && (
           <Link href={`/orders/${id}/erp-preview`}>
             <Button variant="outline"><FileSpreadsheet className="mr-2 h-4 w-4" />ERP 엑셀</Button>
+          </Link>
+        )}
+        {workOrder && (
+          <Link href={`/work-orders/${workOrder.id}`}>
+            <Button variant="outline"><Factory className="mr-2 h-4 w-4" />생산 현황 ({workOrder.work_order_number})</Button>
           </Link>
         )}
         {user && <OrderActions orderId={order.id} currentStatus={status} userRole={user.role} />}

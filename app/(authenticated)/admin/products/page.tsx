@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -9,7 +9,43 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Pencil, Trash2, Save, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Save, X, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+
+const PAGE_SIZE = 15;
+
+function useFilteredPagination<T>(items: T[], searchFn: (item: T, query: string) => boolean) {
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+
+  const filtered = useMemo(() => {
+    if (!search) return items;
+    return items.filter(item => searchFn(item, search.toLowerCase()));
+  }, [items, search]);
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // 검색 변경 시 1페이지로
+  useEffect(() => { setPage(1); }, [search]);
+
+  return { search, setSearch, page, setPage, filtered, paged, totalPages };
+}
+
+function ClientPagination({ page, totalPages, totalCount, onPageChange }: {
+  page: number; totalPages: number; totalCount: number; onPageChange: (p: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex items-center justify-between pt-3 px-1">
+      <span className="text-xs text-gray-500">{totalCount}건 중 {(page-1)*PAGE_SIZE+1}~{Math.min(page*PAGE_SIZE, totalCount)}</span>
+      <div className="flex items-center gap-1">
+        <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)}><ChevronLeft className="h-3 w-3" /></Button>
+        <span className="text-xs px-2">{page}/{totalPages}</span>
+        <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}><ChevronRight className="h-3 w-3" /></Button>
+      </div>
+    </div>
+  );
+}
 
 interface Product {
   id: string; product_code: string; display_name: string; erp_name: string;
@@ -45,6 +81,9 @@ function ProductsTab() {
   const supabase = createClient();
   const [items, setItems] = useState<Product[]>([]);
   const [editing, setEditing] = useState<Partial<Product> | null>(null);
+  const { search, setSearch, page, setPage, paged, filtered, totalPages } = useFilteredPagination(items,
+    (p, q) => p.display_name.toLowerCase().includes(q) || p.product_code.toLowerCase().includes(q) || p.erp_name.toLowerCase().includes(q)
+  );
 
   useEffect(() => { load(); }, []);
   async function load() {
@@ -71,11 +110,17 @@ function ProductsTab() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-lg">품명 마스터 ({items.length}건)</CardTitle>
-        <Button size="sm" onClick={() => setEditing({ product_code: '', display_name: '', erp_name: '', thickness_mm: 0, outer_glass: '', spacer: '', gas: '', inner_glass: '', is_active: true })}>
-          <Plus className="mr-1 h-4 w-4" />추가
-        </Button>
+      <CardHeader className="space-y-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg">품명 마스터 ({items.length}건)</CardTitle>
+          <Button size="sm" onClick={() => setEditing({ product_code: '', display_name: '', erp_name: '', thickness_mm: 0, outer_glass: '', spacer: '', gas: '', inner_glass: '', is_active: true })}>
+            <Plus className="mr-1 h-4 w-4" />추가
+          </Button>
+        </div>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input className="pl-9 h-9" placeholder="품명, 제품코드, ERP명 검색..." value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
       </CardHeader>
       <CardContent>
         {editing && (
@@ -109,7 +154,7 @@ function ProductsTab() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.map(p => (
+            {paged.map(p => (
               <TableRow key={p.id}>
                 <TableCell className="text-xs font-mono">{p.product_code}</TableCell>
                 <TableCell className="font-medium">{p.display_name}</TableCell>
@@ -129,6 +174,7 @@ function ProductsTab() {
             ))}
           </TableBody>
         </Table>
+        <ClientPagination page={page} totalPages={totalPages} totalCount={filtered.length} onPageChange={setPage} />
       </CardContent>
     </Card>
   );
@@ -139,6 +185,9 @@ function CustomersTab() {
   const supabase = createClient();
   const [items, setItems] = useState<Customer[]>([]);
   const [editing, setEditing] = useState<Partial<Customer> | null>(null);
+  const { search, setSearch, page, setPage, paged, filtered, totalPages } = useFilteredPagination(items,
+    (c, q) => c.name.toLowerCase().includes(q) || (c.short_name || '').toLowerCase().includes(q)
+  );
 
   useEffect(() => { load(); }, []);
   async function load() {
@@ -165,11 +214,17 @@ function CustomersTab() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-lg">거래처 ({items.length}건)</CardTitle>
-        <Button size="sm" onClick={() => setEditing({ name: '', short_name: '', contact_info: '', is_active: true })}>
-          <Plus className="mr-1 h-4 w-4" />추가
-        </Button>
+      <CardHeader className="space-y-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg">거래처 ({items.length}건)</CardTitle>
+          <Button size="sm" onClick={() => setEditing({ name: '', short_name: '', contact_info: '', is_active: true })}>
+            <Plus className="mr-1 h-4 w-4" />추가
+          </Button>
+        </div>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input className="pl-9 h-9" placeholder="거래처명, 약칭 검색..." value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
       </CardHeader>
       <CardContent>
         {editing && (
@@ -193,7 +248,7 @@ function CustomersTab() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.map(c => (
+            {paged.map(c => (
               <TableRow key={c.id}>
                 <TableCell className="font-medium">{c.name}</TableCell>
                 <TableCell>{c.short_name}</TableCell>
@@ -208,6 +263,7 @@ function CustomersTab() {
             ))}
           </TableBody>
         </Table>
+        <ClientPagination page={page} totalPages={totalPages} totalCount={filtered.length} onPageChange={setPage} />
       </CardContent>
     </Card>
   );
@@ -219,6 +275,9 @@ function SitesTab() {
   const [items, setItems] = useState<(Site & { customer?: { name: string } })[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [editing, setEditing] = useState<Partial<Site> | null>(null);
+  const { search, setSearch, page, setPage, paged, filtered, totalPages } = useFilteredPagination(items,
+    (s, q) => s.site_name.toLowerCase().includes(q) || (s.customer as { name: string })?.name?.toLowerCase()?.includes(q) || (s.region_sido || '').toLowerCase().includes(q)
+  );
 
   useEffect(() => { load(); }, []);
   async function load() {
@@ -247,11 +306,17 @@ function SitesTab() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-lg">현장 ({items.length}건)</CardTitle>
-        <Button size="sm" onClick={() => setEditing({ customer_id: '', site_name: '', address: '', region_sido: '', region_sigungu: '', is_active: true })}>
-          <Plus className="mr-1 h-4 w-4" />추가
-        </Button>
+      <CardHeader className="space-y-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg">현장 ({items.length}건)</CardTitle>
+          <Button size="sm" onClick={() => setEditing({ customer_id: '', site_name: '', address: '', region_sido: '', region_sigungu: '', is_active: true })}>
+            <Plus className="mr-1 h-4 w-4" />추가
+          </Button>
+        </div>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input className="pl-9 h-9" placeholder="현장명, 거래처, 지역 검색..." value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
       </CardHeader>
       <CardContent>
         {editing && (
@@ -284,7 +349,7 @@ function SitesTab() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.map(s => (
+            {paged.map(s => (
               <TableRow key={s.id}>
                 <TableCell className="text-sm">{(s.customer as { name: string })?.name}</TableCell>
                 <TableCell className="font-medium">{s.site_name}</TableCell>
@@ -300,6 +365,7 @@ function SitesTab() {
             ))}
           </TableBody>
         </Table>
+        <ClientPagination page={page} totalPages={totalPages} totalCount={filtered.length} onPageChange={setPage} />
       </CardContent>
     </Card>
   );
@@ -310,6 +376,9 @@ function RawGlassTab() {
   const supabase = createClient();
   const [items, setItems] = useState<RawGlass[]>([]);
   const [editing, setEditing] = useState<Partial<RawGlass> | null>(null);
+  const { search, setSearch, page, setPage, paged, filtered, totalPages } = useFilteredPagination(items,
+    (g, q) => g.glass_type.toLowerCase().includes(q)
+  );
 
   useEffect(() => { load(); }, []);
   async function load() {
@@ -337,11 +406,17 @@ function RawGlassTab() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-lg">원판 ({items.length}건)</CardTitle>
-        <Button size="sm" onClick={() => setEditing({ glass_type: '', width_mm: 0, height_mm: 0, is_active: true })}>
-          <Plus className="mr-1 h-4 w-4" />추가
-        </Button>
+      <CardHeader className="space-y-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg">원판 ({items.length}건)</CardTitle>
+          <Button size="sm" onClick={() => setEditing({ glass_type: '', width_mm: 0, height_mm: 0, is_active: true })}>
+            <Plus className="mr-1 h-4 w-4" />추가
+          </Button>
+        </div>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input className="pl-9 h-9" placeholder="원판 유형 검색..." value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
       </CardHeader>
       <CardContent>
         {editing && (
@@ -366,7 +441,7 @@ function RawGlassTab() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.map(g => (
+            {paged.map(g => (
               <TableRow key={g.id}>
                 <TableCell className="font-medium">{g.glass_type}</TableCell>
                 <TableCell className="text-right">{g.width_mm}</TableCell>
@@ -382,6 +457,7 @@ function RawGlassTab() {
             ))}
           </TableBody>
         </Table>
+        <ClientPagination page={page} totalPages={totalPages} totalCount={filtered.length} onPageChange={setPage} />
       </CardContent>
     </Card>
   );

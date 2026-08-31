@@ -41,6 +41,7 @@ export default async function CustomerApprovalPage({ params }: { params: Promise
   const order = tokenData.order as {
     id: string; order_date: string; delivery_date: string; status: string; remark: string;
     customer: { name: string }; site: { site_name: string };
+    created_by: string;
   };
 
   const { data: items } = await supabase
@@ -48,6 +49,14 @@ export default async function CustomerApprovalPage({ params }: { params: Promise
     .select('*')
     .eq('order_id', order.id)
     .order('sort_order');
+
+  // 작성자 이름 조회
+  const { data: creatorData } = await supabase
+    .from('dgflow_users')
+    .select('name')
+    .eq('id', order.created_by)
+    .single();
+  const creatorName = creatorData?.name || '';
 
   const orderItems = items || [];
   const groups = groupByProduct(orderItems);
@@ -68,6 +77,28 @@ export default async function CustomerApprovalPage({ params }: { params: Promise
             <div><p className="text-xs text-gray-500">현장명</p><p className="font-medium">{order.site.site_name}</p></div>
             <div><p className="text-xs text-gray-500">주문일</p><p className="font-medium">{order.order_date}</p></div>
             <div><p className="text-xs text-gray-500">납품일</p><p className="font-medium">{order.delivery_date || '-'}</p></div>
+          </CardContent>
+        </Card>
+
+        {/* 결재란 */}
+        <Card>
+          <CardContent className="pt-6">
+            <table className="border-collapse border border-gray-400 text-xs ml-auto">
+              <thead>
+                <tr>
+                  <th className="border border-gray-400 bg-gray-100 px-6 py-1">작성</th>
+                  <th className="border border-gray-400 bg-gray-100 px-6 py-1">검토</th>
+                  <th className="border border-gray-400 bg-gray-100 px-6 py-1">승인</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="border border-gray-400 px-6 py-3 text-center">{creatorName}</td>
+                  <td className="border border-gray-400 px-6 py-3 text-center"></td>
+                  <td className="border border-gray-400 px-6 py-3 text-center"></td>
+                </tr>
+              </tbody>
+            </table>
           </CardContent>
         </Card>
 

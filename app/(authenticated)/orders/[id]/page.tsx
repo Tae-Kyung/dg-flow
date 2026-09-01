@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createServerSupabaseClient, createServiceRoleClient } from '@/lib/supabase/server';
 import { getCurrentUser } from '@/lib/auth/get-user';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ORDER_STATUS, STATUS_COLORS, EDITABLE_STATUSES, ERP_DOWNLOADABLE_STATUSES, type OrderStatus } from '@/types/order-status';
 import OrderActions from '@/components/order/OrderActions';
+import OrderAttachments from '@/components/order/OrderAttachments';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { FileText, FileSpreadsheet, Pencil, Trash2, Factory } from 'lucide-react';
@@ -40,6 +41,14 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     .select('*, changed_by_user:dgflow_users!changed_by(name)')
     .eq('order_id', id)
     .order('created_at', { ascending: false });
+
+  // 첨부파일
+  const serviceClient = createServiceRoleClient();
+  const { data: attachments } = await serviceClient
+    .from('dgflow_order_attachments')
+    .select('*, uploader:dgflow_users!uploaded_by(name)')
+    .eq('order_id', id)
+    .order('created_at', { ascending: true });
 
   // 연결된 작업의뢰서
   const { data: workOrder } = await supabase
@@ -114,6 +123,13 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           </Table>
         </CardContent>
       </Card>
+
+      {/* 참고자료 (첨부파일) */}
+      <OrderAttachments
+        orderId={id}
+        editable={EDITABLE_STATUSES.includes(status) && !!user && (order.created_by === user.id || ['biz_support', 'system_admin'].includes(user.role))}
+        initialAttachments={attachments || []}
+      />
 
       {/* 액션 버튼 */}
       <div className="flex gap-3 flex-wrap">

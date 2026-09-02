@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Trash2, Save } from 'lucide-react';
+import { Plus, Trash2, Save, Paperclip, X, Image, FileSpreadsheet, FileText } from 'lucide-react';
 import { calculateArea } from '@/lib/calc/area';
 import ExcelUpload from '@/components/order/ExcelUpload';
 import type { ParsedOrderItem, ParsedOrderMeta } from '@/lib/parser/excel-order';
@@ -18,15 +18,49 @@ interface Site { id: string; site_name: string; customer_id: string; }
 interface Product { id: string; display_name: string; product_code: string; }
 interface ProductMapping { product_id: string; variant_name: string; }
 
+interface StagedFile {
+  file: File;
+  category: string;
+  preview?: string;
+}
+
+function guessCategoryFromFile(file: File): string {
+  if (file.type.startsWith('image/')) return 'chat_capture';
+  if (file.type.includes('spreadsheet') || file.type.includes('excel')) return 'purchase_order';
+  if (file.type.includes('pdf')) return 'purchase_order';
+  return 'etc';
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function fileIcon(type: string) {
+  if (type.startsWith('image/')) return <Image className="h-4 w-4 text-blue-500" />;
+  if (type.includes('spreadsheet') || type.includes('excel')) return <FileSpreadsheet className="h-4 w-4 text-green-600" />;
+  if (type.includes('pdf')) return <FileText className="h-4 w-4 text-red-500" />;
+  return <Paperclip className="h-4 w-4 text-gray-500" />;
+}
+
+const ALLOWED_TYPES = [
+  'image/png', 'image/jpeg', 'image/webp', 'image/gif',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel',
+  'application/pdf',
+];
+
 interface OrderFormProps {
   mode: 'create' | 'edit';
   title: string;
   initialData?: OrderFormData;
-  onSave: (data: OrderFormData) => Promise<{ error?: string }>;
+  orderId?: string;
+  onSave: (data: OrderFormData) => Promise<{ error?: string; orderId?: string }>;
   onCancel: () => void;
 }
 
-export default function OrderForm({ mode, title, initialData, onSave, onCancel }: OrderFormProps) {
+export default function OrderForm({ mode, title, initialData, orderId: existingOrderId, onSave, onCancel }: OrderFormProps) {
   const supabase = createClient();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -42,6 +76,9 @@ export default function OrderForm({ mode, title, initialData, onSave, onCancel }
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [pendingSiteName, setPendingSiteName] = useState('');
+  const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
+  const [dragOver, setDragOver] = useState(false);
+  const attachInputRef = useRef<HTMLInputElement>(null);
 
   // 마스터 데이터 로드
   useEffect(() => {
@@ -163,6 +200,42 @@ export default function OrderForm({ mode, title, initialData, onSave, onCancel }
     setItems(newItems.length > 0 ? newItems : [{ ...EMPTY_ORDER_ITEM }]);
   }
 
+  // 첨부파일 스테이징
+  function addStagedFiles(files: FileList | File[]) {
+    const newFiles: StagedFile[] = [];
+    for (const file of Array.from(files)) {
+      if (!ALLOWED_TYPES.includes(file.type)) continue;
+      if (file.size > 10 * 1024 * 1024) continue;
+      if (stagedFiles.length + newFiles.length >= 10) break;
+      const staged: StagedFile = { file, category: guessCategoryFromFile(file) };
+      if (file.type.startsWith('image/')) {
+        staged.preview = URL.createObjectURL(file);
+      }
+      newFiles.push(staged);
+    }
+    setStagedFiles(prev => [...prev, ...newFiles]);
+  }
+
+  function removeStagedFile(index: number) {
+    setStagedFiles(prev => {
+      const removed = prev[index];
+      if (removed.preview) URL.revokeObjectURL(removed.preview);
+      return prev.filter((_, i) => i !== index);
+    });
+  }
+
+  async function uploadStagedFiles(targetOrderId: string) {
+    for (const staged of stagedFiles) {
+      const formData = new FormData();
+      formData.append('file', staged.file);
+      formData.append('category', staged.category);
+      await fetch(`/api/orders/${targetOrderId}/attachments`, {
+        method: 'POST',
+        body: formData,
+      });
+    }
+  }
+
   const totalQuantity = items.reduce((s, i) => s + (parseInt(i.quantity) || 0), 0);
   const totalArea = items.reduce((s, i) =>
     s + calculateArea(parseInt(i.width_mm) || 0, parseInt(i.height_mm) || 0, parseInt(i.quantity) || 0), 0);
@@ -180,8 +253,20 @@ export default function OrderForm({ mode, title, initialData, onSave, onCancel }
       remark: remark || '',
       items: validItems,
     });
+
+    if (result.error) {
+      setSaving(false);
+      setError(result.error);
+      return;
+    }
+
+    // 주문 저장 성공 후 스테이징된 파일 업로드
+    const targetId = result.orderId || existingOrderId;
+    if (targetId && stagedFiles.length > 0) {
+      await uploadStagedFiles(targetId);
+    }
+
     setSaving(false);
-    if (result.error) setError(result.error);
   }
 
   return (
@@ -291,6 +376,63 @@ export default function OrderForm({ mode, title, initialData, onSave, onCancel }
           <Button variant="outline" onClick={addItem} className="w-full">
             <Plus className="mr-2 h-4 w-4" /> 품목 추가
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* 참고자료 첨부 */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Paperclip className="h-5 w-5" />
+            참고자료 ({stagedFiles.length})
+          </CardTitle>
+          <div>
+            <input
+              ref={attachInputRef}
+              type="file"
+              multiple
+              accept="image/*,.xlsx,.xls,.pdf"
+              onChange={e => { if (e.target.files) addStagedFiles(e.target.files); e.target.value = ''; }}
+              className="hidden"
+            />
+            <Button type="button" variant="outline" size="sm" onClick={() => attachInputRef.current?.click()} className="gap-1">
+              <Paperclip className="h-4 w-4" /> 파일 선택
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div
+            onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={e => { e.preventDefault(); setDragOver(false); addStagedFiles(e.dataTransfer.files); }}
+            className={`border-2 border-dashed rounded-lg p-4 text-center text-sm transition-colors ${
+              dragOver ? 'border-blue-400 bg-blue-50 text-blue-600' : 'border-gray-200 text-gray-400'
+            }`}
+          >
+            {dragOver ? '여기에 놓으세요' : '카톡 캡처, 고객 발주서, 현장 사진 등을 드래그하세요'}
+            <p className="text-xs mt-1">이미지(PNG/JPG), 엑셀(XLSX), PDF | 최대 10MB/건, 10개까지</p>
+          </div>
+
+          {stagedFiles.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {stagedFiles.map((sf, idx) => (
+                <div key={idx} className="flex items-center gap-3 p-2 rounded-lg border bg-gray-50">
+                  {sf.preview ? (
+                    <img src={sf.preview} alt="" className="h-10 w-10 rounded object-cover" />
+                  ) : (
+                    fileIcon(sf.file.type)
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm truncate">{sf.file.name}</p>
+                    <p className="text-xs text-gray-400">{formatFileSize(sf.file.size)}</p>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => removeStagedFile(idx)}>
+                    <X className="h-4 w-4 text-red-500" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 

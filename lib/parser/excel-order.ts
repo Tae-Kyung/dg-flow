@@ -34,7 +34,7 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   location_room: ['위치', '창위치', '실명', '실', '위치/비고'],
   location_type: ['타입', 'TYPE', '세대타입'],
   location_window_type: ['창구분', '내외창', '구분'],
-  remark: ['비고', '비고1', '참고', 'REMARK', '메모', '실리콘'],
+  remark: ['비고', '비고1', '참고', 'REMARK', '메모'],
 };
 
 /**

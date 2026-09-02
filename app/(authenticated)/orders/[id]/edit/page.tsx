@@ -83,8 +83,11 @@ export default function EditOrderPage() {
     const result = await res.json();
     if (!res.ok) return { error: result.error || '저장에 실패했습니다.' };
 
-    window.location.href = `/orders/${orderId}`;
-    return {};
+    // 첨부파일 업로드는 OrderForm 내부에서 처리 후 이동
+    setTimeout(() => {
+      window.location.href = `/orders/${orderId}`;
+    }, 100);
+    return { orderId };
   }
 
   if (loading) return <div className="p-8 text-center text-gray-500">로딩 중...</div>;
@@ -95,6 +98,7 @@ export default function EditOrderPage() {
       mode="edit"
       title="주문 수정"
       initialData={initialData}
+      orderId={orderId}
       onSave={handleSave}
       onCancel={() => router.push(`/orders/${orderId}`)}
     />

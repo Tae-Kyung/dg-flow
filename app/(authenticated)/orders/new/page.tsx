@@ -37,9 +37,14 @@ export default function NewOrderPage() {
     const result = await res.json();
     if (!res.ok) return { error: result.error || '저장에 실패했습니다.' };
 
-    router.push('/orders');
-    router.refresh();
-    return {};
+    const orderId = result.data?.id;
+    // 첨부파일 업로드는 OrderForm 내부에서 orderId를 받아 처리
+    // 업로드 완료 후 상세 페이지로 이동
+    setTimeout(() => {
+      router.push(orderId ? `/orders/${orderId}` : '/orders');
+      router.refresh();
+    }, 100);
+    return { orderId };
   }
 
   return (

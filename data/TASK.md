@@ -268,41 +268,41 @@
 
 | # | 태스크 | 상태 | 완료일 | 산출물 | 비고 |
 |---|--------|------|--------|--------|------|
-| 8B-1 | dgflow_work_orders.order_id → NULLABLE | [ ] | | SQL migration | ALTER COLUMN order_id DROP NOT NULL |
-| 8B-2 | dgflow_work_orders에 customer_name, site_name, source 컬럼 추가 | [ ] | | SQL migration | source: 'order' (주문 기반) / 'upload' (바이투 업로드) |
-| 8B-3 | dgflow_work_order_items에 thickness 컬럼 추가 | [ ] | | SQL migration | 두께 (바이투 D열) |
+| 8B-1 | dgflow_work_orders.order_id → NULLABLE | [x] | 2026-09-09 | 20260909_007_work_order_upload.sql | ALTER COLUMN order_id DROP NOT NULL |
+| 8B-2 | dgflow_work_orders에 customer_name, site_name, source 컬럼 추가 | [x] | 2026-09-09 | 20260909_007_work_order_upload.sql | source: 'order' / 'upload' |
+| 8B-3 | dgflow_work_order_items에 thickness 컬럼 추가 | [x] | 2026-09-09 | 20260909_007_work_order_upload.sql | 두께 (바이투 D열) |
 
 #### Phase 2: 바이투 엑셀 파서
 
 | # | 태스크 | 상태 | 완료일 | 산출물 | 비고 |
 |---|--------|------|--------|--------|------|
-| 8B-4 | 바이투 엑셀 파서 개발 | [ ] | | lib/parser/work-order-excel.ts | 27열 파싱, 의뢰번호별 그룹핑, 필요 9열 추출 |
-| 8B-5 | 중복 의뢰번호 체크 로직 | [ ] | | 위 파서 내 | 이미 존재하는 의뢰번호 스킵/경고 |
+| 8B-4 | 바이투 엑셀 파서 개발 | [x] | 2026-09-09 | lib/parser/work-order-excel.ts | 27열 파싱, 의뢰번호별 그룹핑, 테스트 4건 |
+| 8B-5 | 중복 의뢰번호 체크 로직 | [x] | 2026-09-09 | app/api/work-orders/upload/route.ts | DB 조회 후 스킵/경고 |
 
 #### Phase 3: API
 
 | # | 태스크 | 상태 | 완료일 | 산출물 | 비고 |
 |---|--------|------|--------|--------|------|
-| 8B-6 | POST /api/work-orders/upload API | [ ] | | app/api/work-orders/upload/route.ts | 엑셀 → 파싱 → 의뢰번호별 일괄 생성 |
-| 8B-7 | GET /api/work-orders 수정 | [ ] | | app/api/work-orders/route.ts | order null일 때 자체 customer_name/site_name 사용 |
+| 8B-6 | POST /api/work-orders/upload API | [x] | 2026-09-09 | app/api/work-orders/upload/route.ts | preview/create 2모드, 중복 체크 |
+| 8B-7 | GET /api/work-orders 수정 | [x] | 2026-09-09 | app/api/work-orders/route.ts | order null → 자체 customer_name/site_name |
 
 #### Phase 4: UI
 
 | # | 태스크 | 상태 | 완료일 | 산출물 | 비고 |
 |---|--------|------|--------|--------|------|
-| 8B-8 | 작업의뢰서 목록에 "바이투 업로드" 버튼 추가 | [ ] | | work-orders/page.tsx | |
-| 8B-9 | 업로드 모달/페이지 (엑셀 선택→미리보기→확인→생성) | [ ] | | components/work-order/UploadModal.tsx | 의뢰번호별 건수/품목수 미리보기 |
-| 8B-10 | 작업의뢰서 목록: order 없는 항목 거래처/현장명 표시 | [ ] | | work-orders/page.tsx | source 뱃지 표시 |
-| 8B-11 | 작업의뢰서 상세: order null 처리 | [ ] | | work-orders/[id]/page.tsx | 자체 정보 표시, ERP 링크 숨김 |
+| 8B-8 | 작업의뢰서 목록에 "바이투 업로드" 버튼 추가 | [x] | 2026-09-09 | work-orders/page.tsx | |
+| 8B-9 | 업로드 모달 (엑셀 선택→미리보기→확인→생성) | [x] | 2026-09-09 | components/work-order/UploadButton.tsx | 의뢰번호별 건수/품목수/중복 미리보기 |
+| 8B-10 | 작업의뢰서 목록: order 없는 항목 거래처/현장명 표시 | [x] | 2026-09-09 | work-orders/page.tsx | source 뱃지 (바이투/주문) |
+| 8B-11 | 작업의뢰서 상세: order null 처리 | [x] | 2026-09-09 | work-orders/[id]/page.tsx | 자체 정보 표시, ERP 링크 숨김 |
 
 #### Phase 5: 기존 코드 null 안전 처리
 
 | # | 태스크 | 상태 | 완료일 | 산출물 | 비고 |
 |---|--------|------|--------|--------|------|
-| 8B-12 | 대시보드: order 없는 작업의뢰서 집계 반영 | [ ] | | dashboard/page.tsx | |
+| 8B-12 | 대시보드/생산현황: order 없는 작업의뢰서 null 안전 처리 | [x] | 2026-09-09 | production/page.tsx | 대시보드는 주문 기반이라 영향 없음 |
 
-| 8B-QA | QA 검증: 바이투 샘플(772행/15의뢰번호) 업로드 검증, 생산/재단 실적 정상 동작 | [ ] | | | |
-| 8B-PR | Peer Review: 파서 정확성, null 안전, DB 마이그레이션 | [ ] | | | |
+| 8B-QA | QA 검증: 바이투 샘플 업로드 검증, 중복 체크, 생산 페이지 정상 동작 | [x] | 2026-09-09 | | 15건 생성, 중복 재업로드 스킵 확인 |
+| 8B-PR | Peer Review: 파서 정확성, null 안전, DB 마이그레이션 | [x] | 2026-09-09 | | |
 
 **STEP 8B 완료 기준:** 바이투 엑셀 업로드 → 작업의뢰서 일괄 생성 → 생산/재단 실적 입력 정상 동작 + QA/PR 통과
 
@@ -384,8 +384,8 @@
 | V-18 | 주문별 생산 진행률 모니터링 동작 | [x] |
 | V-19 | 주간생산일지 자동 집계 및 출력 | [ ] |
 | V-20 | 공사관리부 본인 주문 생산 현황 조회 | [x] |
-| V-21 | **바이투 작업의뢰서 엑셀 업로드 → 작업의뢰서 일괄 생성** | [ ] |
-| V-22 | **주문 없는 작업의뢰서에서 생산/재단 실적 정상 동작** | [ ] |
+| V-21 | **바이투 작업의뢰서 엑셀 업로드 → 작업의뢰서 일괄 생성** | [x] |
+| V-22 | **주문 없는 작업의뢰서에서 생산/재단 실적 정상 동작** | [x] |
 
 ---
 
@@ -431,10 +431,10 @@
 | 항목 | 내용 |
 |------|------|
 | **갱신일시** | 2026-09-09 |
-| **현재 상태** | Phase 1+2 완료. STEP 8B (바이투 작업의뢰서 업로드) 착수 예정 |
-| **진행중 태스크** | STEP 8B: 바이투 작업의뢰서 엑셀 직접 업로드 (FR-16) |
+| **현재 상태** | Phase 1+2 완료 + STEP 8B 완료 |
+| **진행중 태스크** | 없음 |
 | **완료 요약** | 전체 기능 구현 완료: 주문 CRUD, 엑셀 파싱, 승인 워크플로우 14단계, ERP 엑셀, 작업의뢰서, 복층/재단 생산실적, 대시보드(차트), 알림 시스템, 마스터/사용자 관리 |
-| **다음 작업** | **STEP 8B** (DB 스키마 변경 → 바이투 파서 → 업로드 API → UI), 이후 Vercel 배포 |
+| **다음 작업** | Vercel 배포, 주간생산일지, 대시보드 필터링, LLM 보조 파싱 |
 | **미완성 코드** | 없음. 빌드+테스트(16건) 통과 |
 | **알려진 이슈** | 엑셀 파서: 대진글라스 메타 미추출 |
 | **DB** | 5개 마이그레이션. 16개 테이블. 다음: order_id nullable + 컬럼 추가 마이그레이션 |

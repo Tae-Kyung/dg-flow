@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Save, CheckCircle, ChevronDown, ChevronRight, Pencil, Trash2, X } from 'lucide-react';
+import { Save, CheckCircle, ChevronDown, ChevronRight, Pencil, Trash2, X, History } from 'lucide-react';
 
 interface WorkOrderItem {
   id: string;
@@ -58,12 +58,15 @@ export default function ProductionInputPage() {
   const [editReason, setEditReason] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteReason, setDeleteReason] = useState('');
+  const [changeHistory, setChangeHistory] = useState<{ id: string; action: string; old_quantity: number; new_quantity: number | null; reason: string; changed_at: string; changer: { name: string } | null }[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
     supabase.from('dgflow_work_orders').select('work_order_number').eq('id', workOrderId).single()
       .then(({ data }) => setWorkOrder(data));
     loadItems();
     loadLogs();
+    loadHistory();
   }, [workOrderId]);
 
   async function loadItems() {
@@ -79,6 +82,15 @@ export default function ProductionInputPage() {
       .eq('work_order_id', workOrderId)
       .order('production_date', { ascending: false });
     setLogs(data || []);
+  }
+
+  async function loadHistory() {
+    const { data } = await supabase
+      .from('dgflow_production_log_history')
+      .select('id, action, old_quantity, new_quantity, reason, changed_at, changer:dgflow_users!changed_by(name)')
+      .eq('work_order_id', workOrderId)
+      .order('changed_at', { ascending: false });
+    setChangeHistory((data || []) as unknown as typeof changeHistory);
   }
 
   // 일별 집계
@@ -204,6 +216,7 @@ export default function ProductionInputPage() {
       setEditReason('');
       await loadItems();
       await loadLogs();
+      await loadHistory();
     }
     setSaving(false);
   }
@@ -227,6 +240,7 @@ export default function ProductionInputPage() {
       setDeleteReason('');
       await loadItems();
       await loadLogs();
+      await loadHistory();
     }
     setSaving(false);
   }
@@ -503,6 +517,59 @@ export default function ProductionInputPage() {
               </TableBody>
             </Table>
           </CardContent>
+        </Card>
+      )}
+
+      {/* 수정/삭제 이력 */}
+      {changeHistory.length > 0 && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <History className="h-5 w-5" />변경 이력
+              <Badge variant="secondary" className="ml-1">{changeHistory.length}건</Badge>
+            </CardTitle>
+            <Button variant="ghost" size="sm" onClick={() => setShowHistory(!showHistory)}>
+              {showHistory ? '접기' : '펼치기'}
+            </Button>
+          </CardHeader>
+          {showHistory && (
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>일시</TableHead>
+                    <TableHead>구분</TableHead>
+                    <TableHead>변경 내용</TableHead>
+                    <TableHead>사유</TableHead>
+                    <TableHead>변경자</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {changeHistory.map(h => (
+                    <TableRow key={h.id}>
+                      <TableCell className="text-sm text-gray-500 whitespace-nowrap">
+                        {new Date(h.changed_at).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                      </TableCell>
+                      <TableCell>
+                        {h.action === 'update'
+                          ? <Badge variant="secondary" className="bg-blue-50 text-blue-700">수정</Badge>
+                          : <Badge variant="secondary" className="bg-red-50 text-red-700">삭제</Badge>
+                        }
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {h.action === 'update'
+                          ? <span>{h.old_quantity}개 <span className="text-gray-400 mx-1">&rarr;</span> <span className="font-medium">{h.new_quantity}개</span></span>
+                          : <span className="text-red-600">{h.old_quantity}개 삭제</span>
+                        }
+                      </TableCell>
+                      <TableCell className="text-sm text-gray-600 max-w-[200px] truncate">{h.reason}</TableCell>
+                      <TableCell className="text-sm">{h.changer?.name || '-'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          )}
         </Card>
       )}
     </div>

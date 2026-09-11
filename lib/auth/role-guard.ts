@@ -47,8 +47,7 @@ export const MENU_ITEMS: MenuItem[] = [
   { label: '주문 관리', href: '/orders', icon: 'ClipboardList', permission: 'orders:view' },
   { label: '검토', href: '/review', icon: 'FileCheck', permission: 'review:access' },
   { label: '승인', href: '/approve', icon: 'CheckCircle', permission: 'approve:access' },
-  { label: '작업의뢰서', href: '/work-orders', icon: 'FileCheck', permission: 'production:view' },
-  { label: '생산 현황', href: '/production', icon: 'Factory', permission: 'production:view' },
+  { label: '작업의뢰서', href: '/work-orders', icon: 'Factory', permission: 'production:view' },
   { label: '마스터 관리', href: '/admin/products', icon: 'Database', permission: 'admin:master' },
   { label: '사용자 관리', href: '/admin/users', icon: 'Users', permission: 'admin:users' },
 ];

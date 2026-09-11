@@ -32,10 +32,11 @@ export async function POST(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // produced_quantity 재계산
+  // produced_quantity 재계산 + 상태 전환
   if (work_order_item_id) {
     await recalcProducedQuantity(supabase, work_order_item_id);
   }
+  await updateWorkOrderStatus(supabase, work_order_id);
 
   return NextResponse.json({ data }, { status: 201 });
 }
@@ -100,8 +101,9 @@ export async function PUT(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // produced_quantity 재계산
+  // produced_quantity 재계산 + 상태 전환
   await recalcProducedQuantity(supabase, oldLog.work_order_item_id);
+  await updateWorkOrderStatus(supabase, oldLog.work_order_id);
 
   return NextResponse.json({ data });
 }
@@ -152,8 +154,9 @@ export async function DELETE(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // produced_quantity 재계산
+  // produced_quantity 재계산 + 상태 전환
   await recalcProducedQuantity(supabase, oldLog.work_order_item_id);
+  await updateWorkOrderStatus(supabase, oldLog.work_order_id);
 
   return NextResponse.json({ success: true });
 }
@@ -173,6 +176,33 @@ async function recalcProducedQuantity(supabase: ReturnType<typeof createServiceR
     .from('dgflow_work_order_items')
     .update({ produced_quantity: total })
     .eq('id', itemId);
+}
+
+// 작업의뢰서 상태 자동 전환
+async function updateWorkOrderStatus(supabase: ReturnType<typeof createServiceRoleClient>, workOrderId: string) {
+  const { data: items } = await supabase
+    .from('dgflow_work_order_items')
+    .select('quantity, produced_quantity')
+    .eq('work_order_id', workOrderId);
+
+  if (!items || items.length === 0) return;
+
+  const totalQty = items.reduce((s, i) => s + i.quantity, 0);
+  const totalProduced = items.reduce((s, i) => s + i.produced_quantity, 0);
+
+  let newStatus: string;
+  if (totalProduced === 0) {
+    newStatus = 'pending';
+  } else if (totalProduced >= totalQty) {
+    newStatus = 'completed';
+  } else {
+    newStatus = 'in_progress';
+  }
+
+  await supabase
+    .from('dgflow_work_orders')
+    .update({ status: newStatus, updated_at: new Date().toISOString() })
+    .eq('id', workOrderId);
 }
 
 async function calculateItemArea(supabase: ReturnType<typeof createServiceRoleClient>, itemId: string, quantity: number): Promise<number> {

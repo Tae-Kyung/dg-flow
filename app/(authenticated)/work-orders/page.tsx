@@ -8,6 +8,11 @@ import WorkOrderUploadButton from '@/components/work-order/UploadButton';
 import WorkOrderSearchFilter from '@/components/work-order/SearchFilter';
 
 const WO_STATUS: Record<string, string> = { pending: '대기', in_progress: '진행중', completed: '완료' };
+const STATUS_COLORS: Record<string, string> = {
+  pending: 'bg-yellow-100 text-yellow-800',
+  in_progress: 'bg-blue-100 text-blue-800',
+  completed: 'bg-green-100 text-green-800',
+};
 const PAGE_SIZE = 20;
 
 export default async function WorkOrdersPage({ searchParams }: { searchParams: Promise<{ page?: string; q?: string; status?: string; source?: string }> }) {
@@ -22,7 +27,7 @@ export default async function WorkOrdersPage({ searchParams }: { searchParams: P
 
   let query = supabase
     .from('dgflow_work_orders')
-    .select(`*, order:dgflow_orders(order_number, customer:dgflow_customers(short_name), site:dgflow_sites(site_name))`, { count: 'exact' });
+    .select(`*, order:dgflow_orders(order_number, customer:dgflow_customers(short_name), site:dgflow_sites(site_name)), items:dgflow_work_order_items(quantity, produced_quantity)`, { count: 'exact' });
 
   // 텍스트 검색: 의뢰번호, 거래처명, 현장명
   if (q) {
@@ -60,8 +65,8 @@ export default async function WorkOrdersPage({ searchParams }: { searchParams: P
                 <TableHead>의뢰번호</TableHead>
                 <TableHead>거래처</TableHead>
                 <TableHead>현장</TableHead>
-                <TableHead>의뢰일</TableHead>
                 <TableHead>납품일</TableHead>
+                <TableHead>진행률</TableHead>
                 <TableHead>상태</TableHead>
                 <TableHead>구분</TableHead>
                 <TableHead></TableHead>
@@ -77,14 +82,25 @@ export default async function WorkOrdersPage({ searchParams }: { searchParams: P
                 const customerName = order?.customer?.short_name || wo.customer_name || '-';
                 const siteName = order?.site?.site_name || wo.site_name || '-';
                 const isUpload = wo.source === 'upload';
+                const items = (wo.items || []) as { quantity: number; produced_quantity: number }[];
+                const totalQty = items.reduce((s, i) => s + i.quantity, 0);
+                const producedQty = items.reduce((s, i) => s + i.produced_quantity, 0);
+                const progress = totalQty > 0 ? Math.round(producedQty / totalQty * 100) : 0;
                 return (
                   <TableRow key={wo.id}>
                     <TableCell className="font-medium">{wo.work_order_number}</TableCell>
                     <TableCell>{customerName}</TableCell>
                     <TableCell className="max-w-[200px] truncate">{siteName}</TableCell>
-                    <TableCell>{wo.request_date}</TableCell>
                     <TableCell>{wo.delivery_date || '-'}</TableCell>
-                    <TableCell><Badge variant="secondary">{WO_STATUS[wo.status]}</Badge></TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div className="h-full bg-green-500 rounded-full" style={{ width: `${progress}%` }} />
+                        </div>
+                        <span className="text-xs text-gray-600 w-14">{producedQty}/{totalQty}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell><Badge className={STATUS_COLORS[wo.status] || ''} variant="secondary">{WO_STATUS[wo.status]}</Badge></TableCell>
                     <TableCell>
                       {isUpload
                         ? <Badge variant="outline" className="text-orange-600 border-orange-300">바이투</Badge>

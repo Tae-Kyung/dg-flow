@@ -23,7 +23,6 @@ export default async function DashboardPage() {
     { count: totalOrders },
     { data: statusCounts },
     { data: monthOrders },
-    { data: urgentOrders },
     { data: recentOrders },
     { data: trendOrders },
     { count: totalWorkOrders },
@@ -34,11 +33,6 @@ export default async function DashboardPage() {
     supabase.from('dgflow_orders').select('status'),
     supabase.from('dgflow_orders').select('total_quantity, total_area_m2')
       .gte('order_date', monthStart.toISOString().split('T')[0]),
-    supabase.from('dgflow_orders')
-      .select(`*, customer:dgflow_customers(short_name), site:dgflow_sites(site_name)`)
-      .lte('delivery_date', weekLater.toISOString().split('T')[0])
-      .not('status', 'in', '("production_completed","erp_completed")')
-      .order('delivery_date').limit(10),
     supabase.from('dgflow_orders')
       .select(`*, customer:dgflow_customers(short_name), site:dgflow_sites(site_name), creator:dgflow_users!created_by(name)`)
       .order('created_at', { ascending: false }).limit(5),
@@ -189,28 +183,6 @@ export default async function DashboardPage() {
         {/* 납기 임박 */}
         <Card>
           <CardHeader><CardTitle className="text-lg">납기 임박 (7일 이내)</CardTitle></CardHeader>
-          <CardContent>
-            {(!urgentOrders || urgentOrders.length === 0) ? (
-              <p className="text-sm text-gray-500 py-4 text-center">임박한 납기가 없습니다.</p>
-            ) : (
-              <div className="space-y-2">
-                {urgentOrders.map(o => (
-                  <Link key={o.id} href={`/orders/${o.id}`} className="flex items-center justify-between py-2 px-3 rounded hover:bg-gray-50">
-                    <div>
-                      <span className="font-medium text-sm">{(o.customer as { short_name: string }).short_name}</span>
-                      <span className="text-xs text-gray-500 ml-2">{(o.site as { site_name: string }).site_name}</span>
-                    </div>
-                    <Badge variant="destructive" className="text-xs">{o.delivery_date}</Badge>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* 작업의뢰서 납기 임박 */}
-        <Card>
-          <CardHeader><CardTitle className="text-lg">작업의뢰서 납기 임박 (7일 이내)</CardTitle></CardHeader>
           <CardContent>
             {(!urgentWorkOrders || urgentWorkOrders.length === 0) ? (
               <p className="text-sm text-gray-500 py-4 text-center">임박한 납기가 없습니다.</p>

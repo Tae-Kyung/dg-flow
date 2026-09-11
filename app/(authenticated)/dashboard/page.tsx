@@ -33,8 +33,8 @@ export default async function DashboardPage() {
     supabase.from('dgflow_orders').select('status'),
     supabase.from('dgflow_orders').select('total_quantity, total_area_m2')
       .gte('order_date', monthStart.toISOString().split('T')[0]),
-    supabase.from('dgflow_orders')
-      .select(`*, customer:dgflow_customers(short_name), site:dgflow_sites(site_name), creator:dgflow_users!created_by(name)`)
+    supabase.from('dgflow_work_orders')
+      .select('id, work_order_number, customer_name, site_name, request_date, status, source, order:dgflow_orders(customer:dgflow_customers(short_name), site:dgflow_sites(site_name)), items:dgflow_work_order_items(quantity, area_m2)')
       .order('created_at', { ascending: false }).limit(5),
     supabase.from('dgflow_work_orders')
       .select('request_date, items:dgflow_work_order_items(quantity, area_m2)')
@@ -235,27 +235,36 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      {/* 최근 주문 */}
+      {/* 최근 작업의뢰서 */}
       <Card>
-        <CardHeader><CardTitle className="text-lg">최근 주문</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-lg">최근 작업의뢰서</CardTitle></CardHeader>
         <CardContent>
           {(!recentOrders || recentOrders.length === 0) ? (
-            <p className="text-sm text-gray-500 py-4 text-center">주문이 없습니다.</p>
+            <p className="text-sm text-gray-500 py-4 text-center">작업의뢰서가 없습니다.</p>
           ) : (
             <div className="space-y-2">
-              {recentOrders.map(o => (
-                <Link key={o.id} href={`/orders/${o.id}`} className="flex items-center justify-between py-2 px-3 rounded hover:bg-gray-50">
-                  <div>
-                    <span className="font-medium text-sm">{(o.customer as { short_name: string })?.short_name}</span>
-                    <span className="text-xs text-gray-500 ml-2">{(o.site as { site_name: string })?.site_name}</span>
-                    <span className="text-xs text-gray-400 ml-2">by {(o.creator as { name: string })?.name}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-gray-500">{o.total_quantity}개 / {o.total_area_m2}m²</span>
-                    <Badge variant="secondary">{ORDER_STATUS[o.status as OrderStatus]}</Badge>
-                  </div>
-                </Link>
-              ))}
+              {recentOrders.map(wo => {
+                const order = wo.order as unknown as { customer: { short_name: string }; site: { site_name: string } } | null;
+                const customerName = order?.customer?.short_name || wo.customer_name || '-';
+                const siteName = order?.site?.site_name || wo.site_name || '-';
+                const items = (wo.items || []) as { quantity: number; area_m2: number }[];
+                const qty = items.reduce((s: number, i: { quantity: number }) => s + i.quantity, 0);
+                const area = items.reduce((s: number, i: { area_m2: number }) => s + Number(i.area_m2 || 0), 0);
+                const WO_STATUS: Record<string, string> = { pending: '대기', in_progress: '진행중', completed: '완료' };
+                return (
+                  <Link key={wo.id} href={`/work-orders/${wo.id}`} className="flex items-center justify-between py-2 px-3 rounded hover:bg-gray-50">
+                    <div>
+                      <span className="font-medium text-sm">{wo.work_order_number}</span>
+                      <span className="text-xs text-gray-500 ml-2">{customerName} · {siteName}</span>
+                      {wo.source === 'upload' && <Badge variant="outline" className="ml-2 text-orange-600 border-orange-300 text-[10px] px-1">바이투</Badge>}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-gray-500">{qty}개 / {area.toFixed(1)}m²</span>
+                      <Badge variant="secondary">{WO_STATUS[wo.status] || wo.status}</Badge>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           )}
         </CardContent>

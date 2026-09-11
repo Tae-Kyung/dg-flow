@@ -77,24 +77,27 @@ export default async function DashboardPage() {
     .map(([date, v]) => ({ date: date.slice(5), ...v }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  // 거래처별 집계
-  const { data: customerStats } = await supabase
-    .from('dgflow_orders')
-    .select('customer:dgflow_customers(short_name), total_quantity, total_area_m2');
+  // 거래처별 집계 (작업의뢰서 기준)
+  const { data: woItemStats } = await supabase
+    .from('dgflow_work_orders')
+    .select('customer_name, order:dgflow_orders(customer:dgflow_customers(short_name)), items:dgflow_work_order_items(quantity, area_m2)');
 
   const customerMap = new Map<string, { count: number; quantity: number; area: number }>();
-  (customerStats || []).forEach(o => {
-    const cust = o.customer as { short_name: string } | { short_name: string }[] | null;
-    const name = (Array.isArray(cust) ? cust[0]?.short_name : cust?.short_name) || '기타';
+  (woItemStats || []).forEach(wo => {
+    const order = wo.order as unknown as { customer: { short_name: string } } | null;
+    const name = order?.customer?.short_name || wo.customer_name || '기타';
+    const items = (wo.items || []) as { quantity: number; area_m2: number }[];
+    const qty = items.reduce((s, i) => s + i.quantity, 0);
+    const area = items.reduce((s, i) => s + Number(i.area_m2 || 0), 0);
     const prev = customerMap.get(name) || { count: 0, quantity: 0, area: 0 };
     customerMap.set(name, {
       count: prev.count + 1,
-      quantity: prev.quantity + o.total_quantity,
-      area: prev.area + Number(o.total_area_m2),
+      quantity: prev.quantity + qty,
+      area: prev.area + area,
     });
   });
   const topCustomers = [...customerMap.entries()]
-    .sort((a, b) => b[1].count - a[1].count)
+    .sort((a, b) => b[1].quantity - a[1].quantity)
     .slice(0, 5);
 
   const pendingCount = (statusMap.get('pending_customer') || 0)
@@ -235,7 +238,7 @@ export default async function DashboardPage() {
 
         {/* 거래처별 현황 */}
         <Card>
-          <CardHeader><CardTitle className="text-lg">거래처별 주문 현황 (Top 5)</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-lg">거래처별 현황 (수량 Top 5)</CardTitle></CardHeader>
           <CardContent>
             {topCustomers.length === 0 ? (
               <p className="text-sm text-gray-500 py-4 text-center">데이터가 없습니다.</p>

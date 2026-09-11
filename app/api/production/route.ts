@@ -68,6 +68,7 @@ export async function PUT(request: NextRequest) {
   await supabase.from('dgflow_production_log_history').insert({
     production_log_id: id,
     work_order_id: oldLog.work_order_id,
+    work_order_item_id: oldLog.work_order_item_id,
     action: 'update',
     old_quantity: oldLog.quantity_completed,
     new_quantity: quantity_completed,
@@ -133,6 +134,7 @@ export async function DELETE(request: NextRequest) {
   await supabase.from('dgflow_production_log_history').insert({
     production_log_id: id,
     work_order_id: oldLog.work_order_id,
+    work_order_item_id: oldLog.work_order_item_id,
     action: 'delete',
     old_quantity: oldLog.quantity_completed,
     new_quantity: null,

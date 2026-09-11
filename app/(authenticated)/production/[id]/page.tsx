@@ -58,7 +58,7 @@ export default function ProductionInputPage() {
   const [editReason, setEditReason] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteReason, setDeleteReason] = useState('');
-  const [changeHistory, setChangeHistory] = useState<{ id: string; action: string; old_quantity: number; new_quantity: number | null; reason: string; changed_at: string; changer: { name: string } | null }[]>([]);
+  const [changeHistory, setChangeHistory] = useState<{ id: string; action: string; old_quantity: number; new_quantity: number | null; reason: string; changed_at: string; changer: { name: string } | null; item: { product_name: string; width_mm: number; height_mm: number } | null }[]>([]);
   const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
@@ -87,7 +87,7 @@ export default function ProductionInputPage() {
   async function loadHistory() {
     const { data } = await supabase
       .from('dgflow_production_log_history')
-      .select('id, action, old_quantity, new_quantity, reason, changed_at, changer:dgflow_users!changed_by(name)')
+      .select('id, action, old_quantity, new_quantity, reason, changed_at, changer:dgflow_users!changed_by(name), item:dgflow_work_order_items!work_order_item_id(product_name, width_mm, height_mm)')
       .eq('work_order_id', workOrderId)
       .order('changed_at', { ascending: false });
     setChangeHistory((data || []) as unknown as typeof changeHistory);
@@ -539,6 +539,7 @@ export default function ProductionInputPage() {
                   <TableRow>
                     <TableHead>일시</TableHead>
                     <TableHead>구분</TableHead>
+                    <TableHead>품목</TableHead>
                     <TableHead>변경 내용</TableHead>
                     <TableHead>사유</TableHead>
                     <TableHead>변경자</TableHead>
@@ -555,6 +556,10 @@ export default function ProductionInputPage() {
                           ? <Badge variant="secondary" className="bg-blue-50 text-blue-700">수정</Badge>
                           : <Badge variant="secondary" className="bg-red-50 text-red-700">삭제</Badge>
                         }
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        <span className="font-medium">{h.item?.product_name || '-'}</span>
+                        {h.item && <span className="text-gray-400 ml-1 text-xs">{h.item.width_mm}x{h.item.height_mm}</span>}
                       </TableCell>
                       <TableCell className="text-sm">
                         {h.action === 'update'

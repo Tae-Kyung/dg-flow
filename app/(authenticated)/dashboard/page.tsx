@@ -36,9 +36,9 @@ export default async function DashboardPage() {
     supabase.from('dgflow_orders')
       .select(`*, customer:dgflow_customers(short_name), site:dgflow_sites(site_name), creator:dgflow_users!created_by(name)`)
       .order('created_at', { ascending: false }).limit(5),
-    supabase.from('dgflow_orders')
-      .select('order_date, total_quantity, total_area_m2')
-      .gte('order_date', thirtyDaysAgo),
+    supabase.from('dgflow_work_orders')
+      .select('request_date, items:dgflow_work_order_items(quantity, area_m2)')
+      .gte('request_date', thirtyDaysAgo),
     // 작업의뢰서 통계
     supabase.from('dgflow_work_orders').select('*', { count: 'exact', head: true }),
     supabase.from('dgflow_work_orders').select('status, source'),
@@ -58,13 +58,16 @@ export default async function DashboardPage() {
   const monthArea = (monthOrders || []).reduce((s, o) => s + Number(o.total_area_m2), 0);
 
   const trendMap = new Map<string, { count: number; quantity: number; area: number }>();
-  (trendOrders || []).forEach(o => {
-    const date = o.order_date;
+  (trendOrders || []).forEach(wo => {
+    const date = wo.request_date;
+    const items = (wo.items || []) as { quantity: number; area_m2: number }[];
+    const qty = items.reduce((s, i) => s + i.quantity, 0);
+    const area = items.reduce((s, i) => s + Number(i.area_m2 || 0), 0);
     const prev = trendMap.get(date) || { count: 0, quantity: 0, area: 0 };
     trendMap.set(date, {
       count: prev.count + 1,
-      quantity: prev.quantity + o.total_quantity,
-      area: prev.area + Number(o.total_area_m2),
+      quantity: prev.quantity + qty,
+      area: prev.area + area,
     });
   });
   const trendData = [...trendMap.entries()]
@@ -173,7 +176,7 @@ export default async function DashboardPage() {
 
       {/* 주문 추이 차트 */}
       <Card>
-        <CardHeader><CardTitle className="text-lg">최근 30일 주문 추이</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-lg">최근 30일 작업의뢰 추이</CardTitle></CardHeader>
         <CardContent>
           <OrderTrendChart data={trendData} />
         </CardContent>

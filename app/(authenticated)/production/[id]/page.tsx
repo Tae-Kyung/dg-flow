@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Save, CheckCircle } from 'lucide-react';
+import { Save, CheckCircle, ChevronDown, ChevronRight, Pencil, Trash2, X } from 'lucide-react';
 
 interface WorkOrderItem {
   id: string;
@@ -18,6 +18,21 @@ interface WorkOrderItem {
   quantity: number;
   produced_quantity: number;
   area_m2: number;
+}
+
+interface ProductionLog {
+  id: string;
+  work_order_item_id: string;
+  production_date: string;
+  quantity_completed: number;
+  area_m2: number;
+  shift: string;
+  line_number: number;
+  log_type: string;
+  remark: string | null;
+  product_name?: string;
+  width_mm?: number;
+  height_mm?: number;
 }
 
 export default function ProductionInputPage() {
@@ -34,13 +49,21 @@ export default function ProductionInputPage() {
   const [lineNumber, setLineNumber] = useState('1');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [dailyLogs, setDailyLogs] = useState<{ date: string; total_qty: number; total_area: number; count: number; shifts: string }[]>([]);
+
+  // 로그 관련
+  const [logs, setLogs] = useState<ProductionLog[]>([]);
+  const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
+  const [editingLog, setEditingLog] = useState<string | null>(null);
+  const [editQuantity, setEditQuantity] = useState('');
+  const [editReason, setEditReason] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deleteReason, setDeleteReason] = useState('');
 
   useEffect(() => {
     supabase.from('dgflow_work_orders').select('work_order_number').eq('id', workOrderId).single()
       .then(({ data }) => setWorkOrder(data));
     loadItems();
-    loadDailyLogs();
+    loadLogs();
   }, [workOrderId]);
 
   async function loadItems() {
@@ -49,31 +72,34 @@ export default function ProductionInputPage() {
     setItems(data || []);
   }
 
-  async function loadDailyLogs() {
+  async function loadLogs() {
     const { data } = await supabase
       .from('dgflow_production_logs')
-      .select('production_date, quantity_completed, area_m2, shift, line_number')
+      .select('id, work_order_item_id, production_date, quantity_completed, area_m2, shift, line_number, log_type, remark')
       .eq('work_order_id', workOrderId)
       .order('production_date', { ascending: false });
-
-    // 일별 집계
-    const map = new Map<string, { total_qty: number; total_area: number; count: number; shifts: Set<string> }>();
-    (data || []).forEach(log => {
-      const d = log.production_date;
-      const prev = map.get(d) || { total_qty: 0, total_area: 0, count: 0, shifts: new Set<string>() };
-      prev.total_qty += log.quantity_completed;
-      prev.total_area += Number(log.area_m2 || 0);
-      prev.count += 1;
-      prev.shifts.add(`${log.shift === 'night' ? '야' : '주'}간 ${log.line_number}호기`);
-      map.set(d, prev);
-    });
-    setDailyLogs([...map.entries()].map(([date, v]) => ({
-      date, total_qty: v.total_qty, total_area: Math.round(v.total_area * 100) / 100,
-      count: v.count, shifts: [...v.shifts].join(', '),
-    })));
+    setLogs(data || []);
   }
 
-  // 입력된 항목이 있는지 확인
+  // 일별 집계
+  const dailyMap = new Map<string, { total_qty: number; total_area: number; count: number; shifts: Set<string> }>();
+  logs.forEach(log => {
+    const d = log.production_date;
+    const prev = dailyMap.get(d) || { total_qty: 0, total_area: 0, count: 0, shifts: new Set<string>() };
+    prev.total_qty += log.quantity_completed;
+    prev.total_area += Number(log.area_m2 || 0);
+    prev.count += 1;
+    prev.shifts.add(`${log.shift === 'night' ? '야' : '주'}간 ${log.line_number}호기`);
+    dailyMap.set(d, prev);
+  });
+  const dailyLogs = [...dailyMap.entries()].map(([date, v]) => ({
+    date, total_qty: v.total_qty, total_area: Math.round(v.total_area * 100) / 100,
+    count: v.count, shifts: [...v.shifts].join(', '),
+  }));
+
+  // 품목 이름 매핑
+  const itemMap = new Map(items.map(i => [i.id, i]));
+
   const hasInput = Object.values(quantities).some(v => parseInt(v) > 0);
 
   // 전체 저장
@@ -98,15 +124,14 @@ export default function ProductionInputPage() {
         }),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        console.error('생산실적 저장 실패:', err);
+        console.error('생산실적 저장 실패:', await res.json().catch(() => ({})));
         hasError = true;
       }
     }
 
     setQuantities({});
     await loadItems();
-    await loadDailyLogs();
+    await loadLogs();
     setSaving(false);
     if (hasError) {
       alert('일부 항목 저장에 실패했습니다. 다시 시도해주세요.');
@@ -116,7 +141,7 @@ export default function ProductionInputPage() {
     }
   }
 
-  // 전량 완료 (잔여 수량 전부)
+  // 전량 완료
   async function handleAllComplete() {
     const incompleteItems = items.filter(i => i.quantity - i.produced_quantity > 0);
     if (incompleteItems.length === 0) return;
@@ -140,15 +165,14 @@ export default function ProductionInputPage() {
         }),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        console.error('전량완료 저장 실패:', err);
+        console.error('전량완료 저장 실패:', await res.json().catch(() => ({})));
         hasError = true;
       }
     }
 
     setQuantities({});
     await loadItems();
-    await loadDailyLogs();
+    await loadLogs();
     setSaving(false);
     if (hasError) {
       alert('일부 항목 저장에 실패했습니다. 다시 시도해주세요.');
@@ -156,6 +180,63 @@ export default function ProductionInputPage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     }
+  }
+
+  // 수정 저장
+  async function handleEditSave(logId: string) {
+    const qty = parseInt(editQuantity);
+    if (!qty || qty <= 0) { alert('수량을 입력해주세요.'); return; }
+    if (!editReason.trim()) { alert('수정 사유를 입력해주세요.'); return; }
+
+    setSaving(true);
+    const res = await fetch('/api/production', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: logId, quantity_completed: qty, reason: editReason.trim() }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      alert(err.error || '수정에 실패했습니다.');
+    } else {
+      setEditingLog(null);
+      setEditQuantity('');
+      setEditReason('');
+      await loadItems();
+      await loadLogs();
+    }
+    setSaving(false);
+  }
+
+  // 삭제 실행
+  async function handleDelete(logId: string) {
+    if (!deleteReason.trim()) { alert('삭제 사유를 입력해주세요.'); return; }
+
+    setSaving(true);
+    const res = await fetch('/api/production', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: logId, reason: deleteReason.trim() }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      alert(err.error || '삭제에 실패했습니다.');
+    } else {
+      setDeleteConfirm(null);
+      setDeleteReason('');
+      await loadItems();
+      await loadLogs();
+    }
+    setSaving(false);
+  }
+
+  function toggleDate(date: string) {
+    setExpandedDates(prev => {
+      const next = new Set(prev);
+      if (next.has(date)) next.delete(date); else next.add(date);
+      return next;
+    });
   }
 
   const totalQty = items.reduce((s, i) => s + i.quantity, 0);
@@ -238,7 +319,7 @@ export default function ProductionInputPage() {
                 return (
                   <TableRow key={item.id} className={isComplete ? 'bg-green-50' : ''}>
                     <TableCell className="font-medium">{item.product_name}</TableCell>
-                    <TableCell className="text-right text-sm">{item.width_mm}×{item.height_mm}</TableCell>
+                    <TableCell className="text-right text-sm">{item.width_mm}x{item.height_mm}</TableCell>
                     <TableCell className="text-right">{item.quantity}</TableCell>
                     <TableCell className="text-right">{item.produced_quantity}</TableCell>
                     <TableCell className="text-right">
@@ -289,24 +370,130 @@ export default function ProductionInputPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-8"></TableHead>
                   <TableHead>생산일</TableHead>
                   <TableHead className="text-right">생산 수량</TableHead>
-                  <TableHead className="text-right">면적(m²)</TableHead>
+                  <TableHead className="text-right">면적(m2)</TableHead>
                   <TableHead className="text-right">건수</TableHead>
                   <TableHead>구분</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {dailyLogs.map(log => (
-                  <TableRow key={log.date}>
-                    <TableCell className="font-medium">{log.date}</TableCell>
-                    <TableCell className="text-right">{log.total_qty}</TableCell>
-                    <TableCell className="text-right">{log.total_area.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">{log.count}</TableCell>
-                    <TableCell className="text-xs text-gray-500">{log.shifts}</TableCell>
-                  </TableRow>
-                ))}
+                {dailyLogs.map(day => {
+                  const isExpanded = expandedDates.has(day.date);
+                  const dayLogs = logs.filter(l => l.production_date === day.date);
+                  return (
+                    <>
+                      <TableRow key={day.date} className="cursor-pointer hover:bg-gray-50" onClick={() => toggleDate(day.date)}>
+                        <TableCell className="px-2">
+                          {isExpanded ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
+                        </TableCell>
+                        <TableCell className="font-medium">{day.date}</TableCell>
+                        <TableCell className="text-right">{day.total_qty}</TableCell>
+                        <TableCell className="text-right">{day.total_area.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">{day.count}</TableCell>
+                        <TableCell className="text-xs text-gray-500">{day.shifts}</TableCell>
+                      </TableRow>
+                      {isExpanded && dayLogs.map(log => {
+                        const item = itemMap.get(log.work_order_item_id);
+                        const isEditing = editingLog === log.id;
+                        const isDeleting = deleteConfirm === log.id;
+
+                        return (
+                          <TableRow key={log.id} className="bg-gray-50/50">
+                            <TableCell></TableCell>
+                            <TableCell colSpan={5}>
+                              {isEditing ? (
+                                <div className="flex flex-col gap-2 py-1">
+                                  <div className="flex items-center gap-3 text-sm">
+                                    <span className="text-gray-600">{item?.product_name || '-'}</span>
+                                    <span className="text-gray-400">{item ? `${item.width_mm}x${item.height_mm}` : ''}</span>
+                                    <span className="text-gray-400">{log.shift === 'night' ? '야간' : '주간'} {log.line_number}호기</span>
+                                    <span className="text-gray-500">현재: {log.quantity_completed}개</span>
+                                    <Input
+                                      type="number"
+                                      className="h-7 w-20 text-sm text-right"
+                                      value={editQuantity}
+                                      onChange={e => setEditQuantity(e.target.value)}
+                                      min={1}
+                                      placeholder="수정 수량"
+                                      autoFocus
+                                    />
+                                    <span className="text-sm text-gray-500">개</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Input
+                                      className="h-7 text-sm flex-1"
+                                      placeholder="수정 사유 (필수)"
+                                      value={editReason}
+                                      onChange={e => setEditReason(e.target.value)}
+                                    />
+                                    <Button size="sm" variant="default" className="h-7 text-xs" onClick={() => handleEditSave(log.id)} disabled={saving}>
+                                      저장
+                                    </Button>
+                                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setEditingLog(null); setEditReason(''); }}>
+                                      취소
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : isDeleting ? (
+                                <div className="flex flex-col gap-2 py-1">
+                                  <div className="flex items-center gap-2 text-sm">
+                                    <span className="text-red-600 font-medium">삭제 확인:</span>
+                                    <span>{item?.product_name || '-'} {log.quantity_completed}개</span>
+                                    <span className="text-gray-400">({log.shift === 'night' ? '야간' : '주간'} {log.line_number}호기)</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Input
+                                      className="h-7 text-sm flex-1"
+                                      placeholder="삭제 사유 (필수)"
+                                      value={deleteReason}
+                                      onChange={e => setDeleteReason(e.target.value)}
+                                      autoFocus
+                                    />
+                                    <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={() => handleDelete(log.id)} disabled={saving}>
+                                      삭제
+                                    </Button>
+                                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setDeleteConfirm(null); setDeleteReason(''); }}>
+                                      취소
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-between py-1">
+                                  <div className="flex items-center gap-3 text-sm">
+                                    <span className="font-medium">{item?.product_name || '-'}</span>
+                                    <span className="text-gray-400">{item ? `${item.width_mm}x${item.height_mm}` : ''}</span>
+                                    <span>{log.quantity_completed}개</span>
+                                    <span className="text-gray-400">{Number(log.area_m2).toFixed(2)}m2</span>
+                                    <span className="text-gray-400">{log.shift === 'night' ? '야간' : '주간'} {log.line_number}호기</span>
+                                    {log.remark && <span className="text-gray-400 text-xs">({log.remark})</span>}
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      size="sm" variant="ghost" className="h-7 w-7 p-0 text-gray-400 hover:text-blue-600"
+                                      onClick={(e) => { e.stopPropagation(); setEditingLog(log.id); setEditQuantity(String(log.quantity_completed)); setEditReason(''); setDeleteConfirm(null); }}
+                                    >
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button
+                                      size="sm" variant="ghost" className="h-7 w-7 p-0 text-gray-400 hover:text-red-600"
+                                      onClick={(e) => { e.stopPropagation(); setDeleteConfirm(log.id); setDeleteReason(''); setEditingLog(null); }}
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </>
+                  );
+                })}
                 <TableRow className="font-bold bg-gray-50">
+                  <TableCell></TableCell>
                   <TableCell>합계</TableCell>
                   <TableCell className="text-right">{dailyLogs.reduce((s, l) => s + l.total_qty, 0)}</TableCell>
                   <TableCell className="text-right">{dailyLogs.reduce((s, l) => s + l.total_area, 0).toFixed(2)}</TableCell>

@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createServiceRoleClient } from '@/lib/supabase/server';
 import { getCurrentUser } from '@/lib/auth/get-user';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
 
   const { work_order_id, work_order_item_id, quantity_completed, production_date, log_type, shift, line_number, remark } = await request.json();
 
-  const supabase = await createServerSupabaseClient();
+  const supabase = createServiceRoleClient();
 
   // 생산 로그 저장
   const area = await calculateItemArea(supabase, work_order_item_id, quantity_completed);
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ data }, { status: 201 });
 }
 
-async function calculateItemArea(supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>, itemId: string, quantity: number): Promise<number> {
+async function calculateItemArea(supabase: ReturnType<typeof createServiceRoleClient>, itemId: string, quantity: number): Promise<number> {
   if (!itemId) return 0;
   const { data } = await supabase
     .from('dgflow_work_order_items')

@@ -9,25 +9,67 @@ import { ORDER_STATUS, STATUS_COLORS, type OrderStatus } from '@/types/order-sta
 import { Plus } from 'lucide-react';
 import { hasPermission } from '@/lib/auth/role-guard';
 import Pagination from '@/components/ui/pagination';
+import OrderSearchFilter from '@/components/order/SearchFilter';
 
 const PAGE_SIZE = 20;
 
-export default async function OrdersPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+export default async function OrdersPage({ searchParams }: { searchParams: Promise<{ page?: string; q?: string; status?: string }> }) {
   const params = await searchParams;
   const page = parseInt(params.page || '1');
   const offset = (page - 1) * PAGE_SIZE;
+  const q = params.q?.trim() || '';
+  const statusFilter = params.status || '';
 
   const user = await getCurrentUser();
   const supabase = await createServerSupabaseClient();
 
-  const { data: orders, count } = await supabase
+  let query = supabase
     .from('dgflow_orders')
     .select(`
       *,
       customer:dgflow_customers(name, short_name),
       site:dgflow_sites(site_name),
       creator:dgflow_users!created_by(name)
-    `, { count: 'exact' })
+    `, { count: 'exact' });
+
+  // 텍스트 검색: 주문번호로 직접 필터 + 거래처/현장은 ID 목록으로 필터
+  if (q) {
+    // 거래처 ID 검색
+    const { data: matchedCustomers } = await supabase
+      .from('dgflow_customers')
+      .select('id')
+      .or(`name.ilike.%${q}%,short_name.ilike.%${q}%`);
+    const customerIds = (matchedCustomers || []).map(c => c.id);
+
+    // 현장 ID 검색
+    const { data: matchedSites } = await supabase
+      .from('dgflow_sites')
+      .select('id')
+      .ilike('site_name', `%${q}%`);
+    const siteIds = (matchedSites || []).map(s => s.id);
+
+    // 작성자 ID 검색
+    const { data: matchedUsers } = await supabase
+      .from('dgflow_users')
+      .select('id')
+      .ilike('name', `%${q}%`);
+    const userIds = (matchedUsers || []).map(u => u.id);
+
+    const orConditions = [`order_number.ilike.%${q}%`];
+    if (customerIds.length > 0) orConditions.push(`customer_id.in.(${customerIds.join(',')})`);
+    if (siteIds.length > 0) orConditions.push(`site_id.in.(${siteIds.join(',')})`);
+    if (userIds.length > 0) orConditions.push(`created_by.in.(${userIds.join(',')})`);
+
+    query = query.or(orConditions.join(','));
+  }
+
+  // 상태 그룹 필터
+  if (statusFilter) {
+    const statuses = statusFilter.split(',');
+    query = query.in('status', statuses);
+  }
+
+  const { data: orders, count } = await query
     .order('created_at', { ascending: false })
     .range(offset, offset + PAGE_SIZE - 1);
 
@@ -47,6 +89,8 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
           </Link>
         )}
       </div>
+
+      <OrderSearchFilter />
 
       <Card>
         <CardContent className="p-0">
@@ -68,7 +112,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
               {(!orders || orders.length === 0) ? (
                 <TableRow>
                   <TableCell colSpan={9} className="text-center py-8 text-gray-500">
-                    주문이 없습니다. {canCreate && '새 주문을 생성하세요.'}
+                    {q || statusFilter ? '검색 결과가 없습니다.' : `주문이 없습니다. ${canCreate ? '새 주문을 생성하세요.' : ''}`}
                   </TableCell>
                 </TableRow>
               ) : (

@@ -5,20 +5,43 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import Link from 'next/link';
 import Pagination from '@/components/ui/pagination';
 import WorkOrderUploadButton from '@/components/work-order/UploadButton';
+import WorkOrderSearchFilter from '@/components/work-order/SearchFilter';
 
 const WO_STATUS: Record<string, string> = { pending: '대기', in_progress: '진행중', completed: '완료' };
 const PAGE_SIZE = 20;
 
-export default async function WorkOrdersPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+export default async function WorkOrdersPage({ searchParams }: { searchParams: Promise<{ page?: string; q?: string; status?: string; source?: string }> }) {
   const params = await searchParams;
   const page = parseInt(params.page || '1');
   const offset = (page - 1) * PAGE_SIZE;
+  const q = params.q?.trim() || '';
+  const statusFilter = params.status || '';
+  const sourceFilter = params.source || '';
 
   const supabase = await createServerSupabaseClient();
 
-  const { data: workOrders, count } = await supabase
+  let query = supabase
     .from('dgflow_work_orders')
-    .select(`*, order:dgflow_orders(order_number, customer:dgflow_customers(short_name), site:dgflow_sites(site_name))`, { count: 'exact' })
+    .select(`*, order:dgflow_orders(order_number, customer:dgflow_customers(short_name), site:dgflow_sites(site_name))`, { count: 'exact' });
+
+  // 텍스트 검색: 의뢰번호, 거래처명, 현장명
+  if (q) {
+    query = query.or(`work_order_number.ilike.%${q}%,customer_name.ilike.%${q}%,site_name.ilike.%${q}%`);
+  }
+
+  // 상태 필터
+  if (statusFilter) {
+    query = query.eq('status', statusFilter);
+  }
+
+  // 구분 필터
+  if (sourceFilter === 'upload') {
+    query = query.eq('source', 'upload');
+  } else if (sourceFilter === 'order') {
+    query = query.or('source.is.null,source.neq.upload');
+  }
+
+  const { data: workOrders, count } = await query
     .order('created_at', { ascending: false })
     .range(offset, offset + PAGE_SIZE - 1);
 
@@ -28,6 +51,7 @@ export default async function WorkOrdersPage({ searchParams }: { searchParams: P
         <h1 className="text-2xl font-bold">작업의뢰서</h1>
         <WorkOrderUploadButton />
       </div>
+      <WorkOrderSearchFilter />
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -45,7 +69,9 @@ export default async function WorkOrdersPage({ searchParams }: { searchParams: P
             </TableHeader>
             <TableBody>
               {(!workOrders || workOrders.length === 0) ? (
-                <TableRow><TableCell colSpan={8} className="text-center py-8 text-gray-500">작업의뢰서가 없습니다.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                  {q || statusFilter || sourceFilter ? '검색 결과가 없습니다.' : '작업의뢰서가 없습니다.'}
+                </TableCell></TableRow>
               ) : workOrders.map(wo => {
                 const order = wo.order as { order_number: string; customer: { short_name: string }; site: { site_name: string } } | null;
                 const customerName = order?.customer?.short_name || wo.customer_name || '-';

@@ -82,8 +82,9 @@ export default function ProductionInputPage() {
     if (entries.length === 0) return;
 
     setSaving(true);
+    let hasError = false;
     for (const [itemId, qty] of entries) {
-      await fetch('/api/production', {
+      const res = await fetch('/api/production', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -96,14 +97,23 @@ export default function ProductionInputPage() {
           line_number: parseInt(lineNumber),
         }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        console.error('생산실적 저장 실패:', err);
+        hasError = true;
+      }
     }
 
     setQuantities({});
     await loadItems();
     await loadDailyLogs();
     setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    if (hasError) {
+      alert('일부 항목 저장에 실패했습니다. 다시 시도해주세요.');
+    } else {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    }
   }
 
   // 전량 완료 (잔여 수량 전부)
@@ -113,9 +123,10 @@ export default function ProductionInputPage() {
     if (!confirm(`미완료 ${incompleteItems.length}건을 모두 전량완료 처리하시겠습니까?`)) return;
 
     setSaving(true);
+    let hasError = false;
     for (const item of incompleteItems) {
       const remaining = item.quantity - item.produced_quantity;
-      await fetch('/api/production', {
+      const res = await fetch('/api/production', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -128,14 +139,23 @@ export default function ProductionInputPage() {
           line_number: parseInt(lineNumber),
         }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        console.error('전량완료 저장 실패:', err);
+        hasError = true;
+      }
     }
 
     setQuantities({});
     await loadItems();
     await loadDailyLogs();
     setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    if (hasError) {
+      alert('일부 항목 저장에 실패했습니다. 다시 시도해주세요.');
+    } else {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    }
   }
 
   const totalQty = items.reduce((s, i) => s + i.quantity, 0);

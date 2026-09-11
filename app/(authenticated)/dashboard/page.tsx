@@ -26,6 +26,9 @@ export default async function DashboardPage() {
     { data: urgentOrders },
     { data: recentOrders },
     { data: trendOrders },
+    { count: totalWorkOrders },
+    { data: woStatusCounts },
+    { data: urgentWorkOrders },
   ] = await Promise.all([
     supabase.from('dgflow_orders').select('*', { count: 'exact', head: true }),
     supabase.from('dgflow_orders').select('status'),
@@ -42,6 +45,14 @@ export default async function DashboardPage() {
     supabase.from('dgflow_orders')
       .select('order_date, total_quantity, total_area_m2')
       .gte('order_date', thirtyDaysAgo),
+    // 작업의뢰서 통계
+    supabase.from('dgflow_work_orders').select('*', { count: 'exact', head: true }),
+    supabase.from('dgflow_work_orders').select('status, source'),
+    supabase.from('dgflow_work_orders')
+      .select('id, work_order_number, customer_name, site_name, delivery_date, status, source, order:dgflow_orders(customer:dgflow_customers(short_name), site:dgflow_sites(site_name))')
+      .lte('delivery_date', weekLater.toISOString().split('T')[0])
+      .neq('status', 'completed')
+      .order('delivery_date').limit(10),
   ]);
 
   const statusMap = new Map<string, number>();
@@ -90,6 +101,14 @@ export default async function DashboardPage() {
     + (statusMap.get('under_review') || 0)
     + (statusMap.get('pending_approval') || 0);
 
+  // 작업의뢰서 상태 집계
+  const woStatusMap = { pending: 0, in_progress: 0, completed: 0 };
+  let woUploadCount = 0;
+  (woStatusCounts || []).forEach(wo => {
+    if (wo.status in woStatusMap) woStatusMap[wo.status as keyof typeof woStatusMap]++;
+    if (wo.source === 'upload') woUploadCount++;
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -114,6 +133,26 @@ export default async function DashboardPage() {
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-gray-500">이번 달 면적</CardTitle></CardHeader>
           <CardContent><p className="text-3xl font-bold">{monthArea.toFixed(1)}</p><p className="text-xs text-gray-500">m²</p></CardContent>
+        </Card>
+      </div>
+
+      {/* 작업의뢰서 요약 카드 */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-gray-500">전체 작업의뢰서</CardTitle></CardHeader>
+          <CardContent><p className="text-3xl font-bold">{totalWorkOrders || 0}</p><p className="text-xs text-gray-500">건 (바이투 {woUploadCount}건)</p></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-gray-500">생산 대기</CardTitle></CardHeader>
+          <CardContent><p className="text-3xl font-bold text-yellow-600">{woStatusMap.pending}</p><p className="text-xs text-gray-500">작업의뢰서</p></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-gray-500">생산 진행중</CardTitle></CardHeader>
+          <CardContent><p className="text-3xl font-bold text-blue-600">{woStatusMap.in_progress}</p><p className="text-xs text-gray-500">작업의뢰서</p></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-gray-500">생산 완료</CardTitle></CardHeader>
+          <CardContent><p className="text-3xl font-bold text-green-600">{woStatusMap.completed}</p><p className="text-xs text-gray-500">작업의뢰서</p></CardContent>
         </Card>
       </div>
 
@@ -161,6 +200,34 @@ export default async function DashboardPage() {
                     <Badge variant="destructive" className="text-xs">{o.delivery_date}</Badge>
                   </Link>
                 ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* 작업의뢰서 납기 임박 */}
+        <Card>
+          <CardHeader><CardTitle className="text-lg">작업의뢰서 납기 임박 (7일 이내)</CardTitle></CardHeader>
+          <CardContent>
+            {(!urgentWorkOrders || urgentWorkOrders.length === 0) ? (
+              <p className="text-sm text-gray-500 py-4 text-center">임박한 납기가 없습니다.</p>
+            ) : (
+              <div className="space-y-2">
+                {urgentWorkOrders.map(wo => {
+                  const order = wo.order as unknown as { customer: { short_name: string }; site: { site_name: string } } | null;
+                  const customerName = order?.customer?.short_name || wo.customer_name || '-';
+                  const siteName = order?.site?.site_name || wo.site_name || '-';
+                  return (
+                    <Link key={wo.id} href={`/work-orders/${wo.id}`} className="flex items-center justify-between py-2 px-3 rounded hover:bg-gray-50">
+                      <div>
+                        <span className="font-medium text-sm">{wo.work_order_number}</span>
+                        <span className="text-xs text-gray-500 ml-2">{customerName} · {siteName}</span>
+                        {wo.source === 'upload' && <Badge variant="outline" className="ml-2 text-orange-600 border-orange-300 text-[10px] px-1">바이투</Badge>}
+                      </div>
+                      <Badge variant="destructive" className="text-xs">{wo.delivery_date}</Badge>
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </CardContent>

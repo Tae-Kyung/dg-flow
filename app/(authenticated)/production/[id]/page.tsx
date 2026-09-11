@@ -87,7 +87,7 @@ export default function ProductionInputPage() {
   async function loadHistory() {
     const { data } = await supabase
       .from('dgflow_production_log_history')
-      .select('id, action, old_quantity, new_quantity, reason, changed_at, changer:dgflow_users!changed_by(name), item:dgflow_work_order_items!work_order_item_id(product_name, width_mm, height_mm)')
+      .select('id, action, old_quantity, new_quantity, reason, changed_at, changer:dgflow_users!left!changed_by(name), item:dgflow_work_order_items!left!work_order_item_id(product_name, width_mm, height_mm)')
       .eq('work_order_id', workOrderId)
       .order('changed_at', { ascending: false });
     setChangeHistory((data || []) as unknown as typeof changeHistory);

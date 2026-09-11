@@ -197,7 +197,7 @@ export default function ProductionInputPage() {
   // 수정 저장
   async function handleEditSave(logId: string) {
     const qty = parseInt(editQuantity);
-    if (isNaN(qty) || qty < 0) { alert('수량을 입력해주세요.'); return; }
+    if (isNaN(qty) || qty <= 0) { alert('수량은 1 이상이어야 합니다. 취소하려면 삭제를 사용하세요.'); return; }
     if (!editReason.trim()) { alert('수정 사유를 입력해주세요.'); return; }
 
     setSaving(true);

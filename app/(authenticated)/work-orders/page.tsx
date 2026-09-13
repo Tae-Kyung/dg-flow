@@ -13,10 +13,12 @@ const STATUS_COLORS: Record<string, string> = {
   in_progress: 'bg-blue-100 text-blue-800',
   completed: 'bg-green-100 text-green-800',
 };
-const PAGE_SIZE = 20;
+const VALID_PAGE_SIZES = [20, 50, 100];
 
-export default async function WorkOrdersPage({ searchParams }: { searchParams: Promise<{ page?: string; q?: string; status?: string; source?: string }> }) {
+export default async function WorkOrdersPage({ searchParams }: { searchParams: Promise<{ page?: string; q?: string; status?: string; source?: string; size?: string }> }) {
   const params = await searchParams;
+  const pageSizeParam = parseInt(params.size || '20');
+  const PAGE_SIZE = VALID_PAGE_SIZES.includes(pageSizeParam) ? pageSizeParam : 20;
   const page = parseInt(params.page || '1');
   const offset = (page - 1) * PAGE_SIZE;
   const q = params.q?.trim() || '';

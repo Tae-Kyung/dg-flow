@@ -6,10 +6,12 @@ import { ORDER_STATUS, type OrderStatus } from '@/types/order-status';
 import Link from 'next/link';
 import Pagination from '@/components/ui/pagination';
 
-const PAGE_SIZE = 20;
+const VALID_PAGE_SIZES = [20, 50, 100];
 
-export default async function ReviewPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+export default async function ReviewPage({ searchParams }: { searchParams: Promise<{ page?: string; size?: string }> }) {
   const params = await searchParams;
+  const pageSizeParam = parseInt(params.size || '20');
+  const PAGE_SIZE = VALID_PAGE_SIZES.includes(pageSizeParam) ? pageSizeParam : 20;
   const page = parseInt(params.page || '1');
   const offset = (page - 1) * PAGE_SIZE;
 

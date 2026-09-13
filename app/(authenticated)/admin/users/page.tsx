@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Pencil, Save, X } from 'lucide-react';
+import { Plus, Pencil, Save, X, KeyRound } from 'lucide-react';
 import { USER_ROLES, type UserRole } from '@/types/user';
 
 interface UserRow {
@@ -42,6 +42,8 @@ export default function UsersPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [editing, setEditing] = useState<Partial<UserRow> | null>(null);
   const [creating, setCreating] = useState<NewUser | null>(null);
+  const [resetTarget, setResetTarget] = useState<UserRow | null>(null);
+  const [resetPassword, setResetPassword] = useState('dgflow2026!');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -77,6 +79,30 @@ export default function UsersPage() {
 
     setCreating(null);
     load();
+  }
+
+  async function handleResetPassword() {
+    if (!resetTarget) return;
+    setSaving(true);
+    setError('');
+
+    const res = await fetch('/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ auth_id: resetTarget.auth_id, new_password: resetPassword }),
+    });
+
+    const result = await res.json();
+    setSaving(false);
+
+    if (!res.ok) {
+      setError(result.error || '비밀번호 초기화에 실패했습니다.');
+      return;
+    }
+
+    setResetTarget(null);
+    setResetPassword('dgflow2026!');
+    alert(`${resetTarget.name}님의 비밀번호가 초기화되었습니다.`);
   }
 
   async function handleUpdate() {
@@ -189,6 +215,27 @@ export default function UsersPage() {
             </div>
           )}
 
+          {/* 비밀번호 초기화 폼 */}
+          {resetTarget && (
+            <div className="mb-4 p-4 border rounded-lg bg-orange-50 border-orange-200 space-y-3">
+              <p className="font-medium text-sm">비밀번호 초기화: {resetTarget.name} ({resetTarget.email})</p>
+              <div className="flex items-end gap-3">
+                <div className="w-64">
+                  <Label className="text-xs">새 비밀번호</Label>
+                  <Input className="h-8 text-sm" type="text" value={resetPassword}
+                    onChange={e => setResetPassword(e.target.value)} />
+                </div>
+                <Button size="sm" onClick={handleResetPassword} disabled={saving} className="bg-orange-600 hover:bg-orange-700 text-white">
+                  <KeyRound className="mr-1 h-3 w-3" />{saving ? '초기화 중...' : '비밀번호 초기화'}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => { setResetTarget(null); setError(''); }}>
+                  <X className="mr-1 h-3 w-3" />취소
+                </Button>
+              </div>
+              {error && <p className="text-sm text-red-600">{error}</p>}
+            </div>
+          )}
+
           <Table>
             <TableHeader>
               <TableRow>
@@ -217,9 +264,14 @@ export default function UsersPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => { setEditing(u); setCreating(null); }}>
-                      <Pencil className="h-3 w-3" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => { setEditing(u); setCreating(null); setResetTarget(null); }} title="수정">
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => { setResetTarget(u); setEditing(null); setCreating(null); setError(''); setResetPassword('dgflow2026!'); }} title="비밀번호 초기화">
+                        <KeyRound className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

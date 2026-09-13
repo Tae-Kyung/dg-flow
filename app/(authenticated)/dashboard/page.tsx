@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import OrderTrendChart from '@/components/dashboard/OrderTrendChart';
+import DeliveryDday from '@/components/order/DeliveryDday';
 import { format, subDays } from 'date-fns';
 
 export default async function DashboardPage() {
@@ -104,8 +105,8 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">대시보드</h1>
-        <p className="text-sm text-gray-500">환영합니다, {user?.name}님 ({user ? USER_ROLES[user.role] : ''})</p>
+        <h1 className="text-2xl font-bold font-[family-name:var(--font-heading)]">대시보드</h1>
+        <p className="text-sm text-[var(--muted-foreground)]">환영합니다, {user?.name}님 ({user ? USER_ROLES[user.role] : ''})</p>
       </div>
 
       {/* 요약 카드 */}
@@ -158,13 +159,13 @@ export default async function DashboardPage() {
                   const customerName = order?.customer?.short_name || wo.customer_name || '-';
                   const siteName = order?.site?.site_name || wo.site_name || '-';
                   return (
-                    <Link key={wo.id} href={`/work-orders/${wo.id}`} className="flex items-center justify-between py-2 px-3 rounded hover:bg-gray-50">
+                    <Link key={wo.id} href={`/work-orders/${wo.id}`} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-[var(--muted)] transition-colors">
                       <div>
                         <span className="font-medium text-sm">{wo.work_order_number}</span>
-                        <span className="text-xs text-gray-500 ml-2">{customerName} · {siteName}</span>
+                        <span className="text-xs text-[var(--muted-foreground)] ml-2">{customerName} · {siteName}</span>
                         {wo.source === 'upload' && <Badge variant="outline" className="ml-2 text-orange-600 border-orange-300 text-[10px] px-1">바이투</Badge>}
                       </div>
-                      <Badge variant="destructive" className="text-xs">{wo.delivery_date}</Badge>
+                      <DeliveryDday date={wo.delivery_date} />
                     </Link>
                   );
                 })}

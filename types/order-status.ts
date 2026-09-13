@@ -17,22 +17,23 @@ export const ORDER_STATUS = {
 
 export type OrderStatus = keyof typeof ORDER_STATUS;
 
-// 상태별 색상 (뱃지용)
+// 상태별 색상 (뱃지용) — 시맨틱 그룹별 통일
+// 초안/대기: Slate, 승인대기/진행: Amber, 검토: Violet, 승인/완료: Emerald, 반려: Rose, 생산: Blue
 export const STATUS_COLORS: Record<OrderStatus, string> = {
-  draft: 'bg-gray-100 text-gray-800',
-  completed: 'bg-blue-50 text-blue-800',
-  pending_customer: 'bg-yellow-100 text-yellow-800',
-  rejected_by_customer: 'bg-red-100 text-red-800',
-  customer_approved: 'bg-blue-100 text-blue-800',
-  under_review: 'bg-purple-100 text-purple-800',
-  review_completed: 'bg-indigo-100 text-indigo-800',
-  pending_approval: 'bg-orange-100 text-orange-800',
-  rejected_by_admin: 'bg-red-100 text-red-800',
-  final_approved: 'bg-green-100 text-green-800',
-  erp_completed: 'bg-emerald-100 text-emerald-800',
-  work_order_created: 'bg-teal-100 text-teal-800',
-  in_production: 'bg-cyan-100 text-cyan-800',
-  production_completed: 'bg-green-200 text-green-900',
+  draft: 'bg-slate-100 text-slate-700 border border-slate-200',
+  completed: 'bg-blue-50 text-blue-700 border border-blue-200',
+  pending_customer: 'bg-amber-50 text-amber-700 border border-amber-200',
+  rejected_by_customer: 'bg-rose-50 text-rose-700 border border-rose-200',
+  customer_approved: 'bg-teal-50 text-teal-700 border border-teal-200',
+  under_review: 'bg-violet-50 text-violet-700 border border-violet-200',
+  review_completed: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
+  pending_approval: 'bg-amber-50 text-amber-700 border border-amber-200',
+  rejected_by_admin: 'bg-rose-50 text-rose-700 border border-rose-200',
+  final_approved: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  erp_completed: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  work_order_created: 'bg-teal-50 text-teal-700 border border-teal-200',
+  in_production: 'bg-blue-50 text-blue-700 border border-blue-200',
+  production_completed: 'bg-emerald-100 text-emerald-800 border border-emerald-300',
 };
 
 // 수정/삭제 가능한 상태

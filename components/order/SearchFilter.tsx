@@ -73,8 +73,8 @@ export default function OrderSearchFilter() {
         ))}
       </select>
       {hasFilters && (
-        <Button variant="ghost" size="sm" onClick={clearAll} className="text-gray-500">
-          <X className="h-4 w-4 mr-1" />초기화
+        <Button variant="outline" size="sm" onClick={clearAll} className="text-[var(--destructive)] border-[var(--destructive)]/30 hover:bg-[var(--destructive)]/10">
+          <X className="h-4 w-4 mr-1" />필터 초기화
         </Button>
       )}
     </div>

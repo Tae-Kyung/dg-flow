@@ -27,11 +27,11 @@ export default function Sidebar({ userName, userRole }: SidebarProps) {
   const menuItems = getMenuForRole(userRole);
 
   return (
-    <aside className="flex h-screen w-60 flex-col border-r bg-white">
-      <div className="border-b px-4 py-4 flex items-center justify-between">
+    <aside className="flex h-screen w-60 flex-col border-r border-[var(--sidebar-border)] bg-[var(--sidebar)]">
+      <div className="border-b border-[var(--sidebar-border)] px-4 py-4 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">DG-Flow</h1>
-          <p className="text-xs text-gray-500">동일유리 주문관리</p>
+          <h1 className="text-xl font-[var(--font-heading)] font-bold text-[var(--primary)]">DG-Flow</h1>
+          <p className="text-xs text-[var(--muted-foreground)]">동일유리 주문관리</p>
         </div>
         <NotificationBell />
       </div>
@@ -45,10 +45,10 @@ export default function Sidebar({ userName, userRole }: SidebarProps) {
               key={item.href}
               href={item.href}
               className={cn(
-                'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all',
                 isActive
-                  ? 'bg-gray-100 text-gray-900'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  ? 'bg-[var(--primary)] text-[var(--primary-foreground)] shadow-sm'
+                  : 'text-[var(--muted-foreground)] hover:bg-[var(--sidebar-accent)] hover:text-[var(--sidebar-foreground)]'
               )}
             >
               <Icon className="h-4 w-4" />
@@ -58,15 +58,15 @@ export default function Sidebar({ userName, userRole }: SidebarProps) {
         })}
       </nav>
 
-      <div className="border-t px-4 py-3">
-        <p className="text-sm font-medium text-gray-900">{userName}</p>
-        <p className="text-xs text-gray-500">{USER_ROLES[userRole]}</p>
+      <div className="border-t border-[var(--sidebar-border)] px-4 py-3">
+        <p className="text-sm font-medium text-[var(--sidebar-foreground)]">{userName}</p>
+        <p className="text-xs text-[var(--muted-foreground)]">{USER_ROLES[userRole]}</p>
         <button
           onClick={async () => {
             await fetch('/api/auth/signout', { method: 'POST' });
             window.location.href = '/login';
           }}
-          className="flex items-center gap-2 text-xs text-gray-500 hover:text-gray-900 mt-2"
+          className="flex items-center gap-2 text-xs text-[var(--muted-foreground)] hover:text-[var(--destructive)] mt-2 transition-colors"
         >
           <LogOut className="h-3 w-3" />
           로그아웃

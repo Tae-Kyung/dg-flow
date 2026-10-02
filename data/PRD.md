@@ -4,7 +4,7 @@
 > **작성일:** 2026-08-30 | **최종 갱신:** 2026-09-09
 > **근거 문서:** requirement.md (2026-08-29 PBL 교육 현업 요구사항), Project_planning.md
 > **프로젝트:** 동일유리 & 충북대학교 RISE AX기업혁신 공동연구과제
-> **구현 상태:** Phase 1+2 완료 + Phase 2.5 바이투 작업의뢰서 업로드 추가 (20페이지, 15 API, 16 DB 테이블)
+> **구현 상태:** Phase 1+2 완료 + Phase 2.5 바이투 작업의뢰서 업로드 추가 + Phase 3 진행중 (20페이지, 15 API, 16 DB 테이블)
 
 ---
 
@@ -344,6 +344,27 @@
 | **처리 로직** | 1. 일간 복층생산일지 데이터 주차별 자동 합산<br>2. KPI 자동 계산: 생산조, 생산M2, 시간당 생산조/M2, 목표대비 달성률, 바코드 입력 비율<br>3. 1호기/2호기 별도 집계<br>4. 주간생산일지 엑셀 출력 (기존 양식 호환) |
 | **우선순위** | 확장 (2차 개발) |
 
+#### FR-17: OpenAPI 기반 외부 연동 API
+
+| 항목 | 내용 |
+|------|------|
+| **설명** | DG-Flow의 핵심 데이터를 외부 시스템(AI 어시스턴트, 서드파티 앱)에서 조회할 수 있도록 RESTful API를 제공한다 |
+| **Actor** | 시스템관리자 (API Key 관리), 외부 시스템 (API 호출) |
+| **선행조건** | API Key 발급 |
+| **처리 로직** | 1. API Key 기반 인증 (Bearer Token)<br>2. 읽기 전용 API: 주문 목록/상세, 작업의뢰서 목록/상세, 대시보드 요약, 생산실적, 재단실적<br>3. OpenAPI 3.0 스펙 자동 생성 (/api/v1/openapi.json)<br>4. 요청당 rate limiting (분당 60회)<br>5. 응답 페이지네이션 (limit/offset) |
+| **API 엔드포인트** | GET /api/v1/orders — 주문 목록<br>GET /api/v1/orders/:id — 주문 상세 (품목 포함)<br>GET /api/v1/work-orders — 작업의뢰서 목록<br>GET /api/v1/work-orders/:id — 작업의뢰서 상세 (품목+생산이력 포함)<br>GET /api/v1/dashboard/summary — 대시보드 요약 통계<br>GET /api/v1/production — 생산실적 조회<br>GET /api/v1/cutting — 재단실적 조회 |
+| **우선순위** | 확장 (Phase 3) |
+
+#### FR-18: MCP 서버 (AI 어시스턴트 연동)
+
+| 항목 | 내용 |
+|------|------|
+| **설명** | Claude, Gemini, ChatGPT 등 AI 어시스턴트에서 DG-Flow 데이터를 조회할 수 있도록 MCP(Model Context Protocol) 서버를 제공한다 |
+| **Actor** | AI 어시스턴트 (Claude Desktop, Gemini, ChatGPT 등) |
+| **선행조건** | FR-17 완료 (OpenAPI 엔드포인트) |
+| **처리 로직** | 1. MCP 서버가 FR-17의 OpenAPI 엔드포인트를 호출하여 데이터 반환<br>2. MCP Tool 제공: get_orders, get_order_detail, get_work_orders, get_work_order_detail, get_dashboard_summary, get_production_logs, get_cutting_logs<br>3. MCP Resource 제공: 시스템 개요, DB 스키마 정보<br>4. stdio 전송 방식 (Claude Desktop, IDE 플러그인 호환) |
+| **우선순위** | 확장 (Phase 3) |
+
 ### 5.3 마스터 데이터 관리
 
 #### FR-12: 품명 마스터 관리
@@ -487,6 +508,8 @@
 | NFR-14 | 기존 절단일보 엑셀 양식(12~15열) 호환 출력 |
 | NFR-15 | 기존 주간생산일지 엑셀 양식(144행×52열) 호환 출력 |
 | NFR-16 | 바이투 ERP 작업의뢰서 export 엑셀(27열) 업로드 파싱 호환 |
+| NFR-17 | API Key 인증: 외부 API 접근 시 dgflow_api_keys 테이블 기반 Bearer Token 인증 |
+| NFR-18 | API Rate Limiting: 분당 60회 요청 제한 (API Key별) |
 
 ---
 
@@ -630,6 +653,14 @@ ERP 입력 시 동일 품명+동일 규격 항목을 묶는 규칙 (FR-06에서 
 | 11 | 주간 생산실적 집계 | FR-11 |
 | 12 | 원판 마스터 관리 | FR-14 |
 
+### Phase 3: 외부 연동 (API/MCP)
+
+| 순서 | 기능 | 요구사항 |
+|------|------|---------|
+| 13 | API Key 인증 + 읽기 전용 API | FR-17 |
+| 14 | OpenAPI 3.0 스펙 | FR-17 |
+| 15 | MCP 서버 | FR-18 |
+
 ---
 
 ## 12. 외부 시스템 연동
@@ -639,6 +670,7 @@ ERP 입력 시 동일 품명+동일 규격 항목을 묶는 규칙 (FR-06에서 
 | **ERP(바이투)** | 엑셀 Import/Export | 16열 엑셀 양식으로 데이터 교환. API 연동 가능 여부 미확인 |
 | **MES** | 바코드 라벨 출력 | 라벨에 의뢰번호/업체/품명/규격/비고 포함. 데이터 export 가능 여부 미확인 |
 | **이메일** | 고객 승인 링크 전송 | 주문의뢰서 초안 확인 및 승인용 링크 발송 |
+| **AI 어시스턴트** | MCP + OpenAPI | Claude/Gemini/ChatGPT에서 주문/생산 현황 조회. MCP 서버가 OpenAPI 엔드포인트를 래핑 |
 
 ---
 

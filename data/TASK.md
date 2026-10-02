@@ -389,7 +389,63 @@
 
 ---
 
-## Phase 3: 미확인 사항 확인 및 보정 (개발 완료 후)
+## Phase 3: 외부 연동 — OpenAPI + MCP (FR-17, FR-18)
+
+> **목표:** DG-Flow의 핵심 데이터를 외부 AI 어시스턴트(Claude, Gemini, ChatGPT)에서 조회할 수 있도록
+> OpenAPI 기반 읽기 전용 API를 구축하고, MCP 서버로 래핑하여 제공한다.
+
+### STEP 13: API Key 인증 인프라
+
+| # | 태스크 | 상태 | 완료일 | 산출물 | 비고 |
+|---|--------|------|--------|--------|------|
+| 13-1 | dgflow_api_keys 테이블 생성 (마이그레이션) | [~] | | 20261002_008_api_keys.sql | id, key_hash, name, user_id(FK), role, expires_at, rate_limit, is_active |
+| 13-2 | API Key 인증 미들웨어 (validateApiKey) | [~] | | lib/auth/api-key.ts | Bearer Token → DB 검증, rate limit 체크 |
+| 13-3 | API Key 생성/관리 API | [ ] | | app/api/v1/api-keys/route.ts | POST(생성), GET(목록), DELETE(폐기) |
+| 13-4 | API Key 관리 UI (시스템관리자) | [ ] | | admin/api-keys/page.tsx | 키 생성, 목록, 비활성화 |
+
+### STEP 14: 읽기 전용 v1 API
+
+| # | 태스크 | 상태 | 완료일 | 산출물 | 비고 |
+|---|--------|------|--------|--------|------|
+| 14-1 | GET /api/v1/orders — 주문 목록 | [~] | | app/api/v1/orders/route.ts | 페이지네이션, 상태 필터 |
+| 14-2 | GET /api/v1/orders/:id — 주문 상세 | [~] | | app/api/v1/orders/[id]/route.ts | 품목 포함 |
+| 14-3 | GET /api/v1/work-orders — 작업의뢰서 목록 | [~] | | app/api/v1/work-orders/route.ts | 페이지네이션 |
+| 14-4 | GET /api/v1/work-orders/:id — 작업의뢰서 상세 | [~] | | app/api/v1/work-orders/[id]/route.ts | 품목+생산이력 포함 |
+| 14-5 | GET /api/v1/dashboard/summary — 대시보드 요약 | [~] | | app/api/v1/dashboard/summary/route.ts | 요약 카드, 상태별 건수 |
+| 14-6 | GET /api/v1/production — 생산실적 조회 | [~] | | app/api/v1/production/route.ts | 작업의뢰서별 필터 |
+| 14-7 | GET /api/v1/cutting — 재단실적 조회 | [~] | | app/api/v1/cutting/route.ts | 작업의뢰서별 필터 |
+
+### STEP 15: OpenAPI 스펙
+
+| # | 태스크 | 상태 | 완료일 | 산출물 | 비고 |
+|---|--------|------|--------|--------|------|
+| 15-1 | OpenAPI 3.0 스펙 생성 | [~] | | app/api/v1/openapi.json/route.ts | 자동 serve |
+| 15-2 | Swagger UI 페이지 | [ ] | | app/api-docs/page.tsx | 개발/테스트용 |
+
+### STEP 16: MCP 서버
+
+| # | 태스크 | 상태 | 완료일 | 산출물 | 비고 |
+|---|--------|------|--------|--------|------|
+| 16-1 | MCP 서버 프로젝트 구조 | [~] | | mcp-server/ | TypeScript, stdio 전송 |
+| 16-2 | MCP Tools 구현 (7개) | [~] | | mcp-server/src/tools/ | get_orders, get_order_detail, get_work_orders, get_work_order_detail, get_dashboard_summary, get_production_logs, get_cutting_logs |
+| 16-3 | MCP Resources 구현 | [ ] | | mcp-server/src/resources/ | 시스템 개요, DB 스키마 |
+| 16-4 | Claude Desktop 연동 설정 | [ ] | | mcp-server/README.md | claude_desktop_config.json 예시 |
+| 16-5 | ChatGPT Actions 연동 가이드 | [ ] | | docs/chatgpt-actions.md | OpenAPI 스펙 기반 |
+| 16-6 | Gemini 연동 가이드 | [ ] | | docs/gemini-integration.md | OpenAPI 스펙 기반 |
+
+### Phase 3 완료 기준 체크리스트
+
+| # | 검증 항목 | 상태 |
+|---|----------|------|
+| V-23 | API Key 생성/인증 동작 | [ ] |
+| V-24 | v1 API 7개 엔드포인트 정상 응답 | [ ] |
+| V-25 | OpenAPI 스펙 /api/v1/openapi.json 접근 가능 | [ ] |
+| V-26 | MCP 서버 Claude Desktop 연동 | [ ] |
+| V-27 | ChatGPT Actions에서 데이터 조회 | [ ] |
+
+---
+
+## Phase 4: 미확인 사항 확인 및 보정 (개발 완료 후)
 
 > Phase 1~2 개발 완료 후, 동일유리 현업과 하나씩 확인하며 시스템을 보정한다.
 > 기본 결정으로 구현한 부분을 실제 업무에 맞게 조정하는 단계.
@@ -430,11 +486,11 @@
 
 | 항목 | 내용 |
 |------|------|
-| **갱신일시** | 2026-09-09 |
-| **현재 상태** | Phase 1+2 완료 + STEP 8B 완료 |
-| **진행중 태스크** | 없음 |
+| **갱신일시** | 2026-10-02 |
+| **현재 상태** | Phase 1+2 완료 + Phase 3 진행중 |
+| **진행중 태스크** | STEP 13~16 (API Key + v1 API + OpenAPI + MCP 서버) |
 | **완료 요약** | 전체 기능 구현 완료: 주문 CRUD, 엑셀 파싱, 승인 워크플로우 14단계, ERP 엑셀, 작업의뢰서, 복층/재단 생산실적, 대시보드(차트), 알림 시스템, 마스터/사용자 관리 |
-| **다음 작업** | Vercel 배포, 주간생산일지, 대시보드 필터링, LLM 보조 파싱 |
+| **다음 작업** | Phase 3 완료 후 V-23~V-27 검증 |
 | **미완성 코드** | 없음. 빌드+테스트(16건) 통과 |
 | **알려진 이슈** | 엑셀 파서: 대진글라스 메타 미추출 |
 | **DB** | 5개 마이그레이션. 16개 테이블. 다음: order_id nullable + 컬럼 추가 마이그레이션 |

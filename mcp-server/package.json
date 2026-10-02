@@ -1,0 +1,20 @@
+{
+  "name": "dgflow-mcp-server",
+  "version": "1.0.0",
+  "description": "DG-Flow MCP Server - 동일유리 주문관리 시스템 AI 연동",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.5.0",
+    "@types/node": "^20.0.0"
+  }
+}
